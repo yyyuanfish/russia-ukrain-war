@@ -1,0 +1,27 @@
+{
+  "start_url": "https://en.wikipedia.org/wiki/Russo-Ukrainian_war",
+  "total_internal_links": 2716,
+  "unique_titles": 2550,
+  "resolved_qids": 2191,
+  "overlap_with_prior": 0,
+  "overlap_rate": 0.0,
+  "language_coverage_nonempty_label_or_desc": {
+    "en": 2190,
+    "uk": 1842,
+    "ru": 1843
+  },
+  "attribution_counts": {
+    "American": 98,
+    "other": 825,
+    "Russia": 560,
+    "Ukraine": 708
+  },
+  "category_counts": {
+    "unknown": 1777,
+    "event": 114,
+    "organization": 63,
+    "person": 231,
+    "policy": 6
+  },
+  "note": "SPARQL queries saved in SPARQL_QUERIES.log; copy-paste to query.wikidata.org for sanity check."
+}
