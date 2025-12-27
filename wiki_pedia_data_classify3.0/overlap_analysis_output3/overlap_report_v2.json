@@ -1,0 +1,112 @@
+{
+  "pre_classify": {
+    "wiki": {
+      "file": "navbox_ru_ua_entities.jsonl",
+      "unique_qids": 1781,
+      "language_coverage_nonempty_label_or_desc": {
+        "en": 1780,
+        "ru": 1480,
+        "uk": 1480
+      },
+      "category_hint_counts": {
+        "unknown": 1421,
+        "person": 188,
+        "event": 113,
+        "organization": 54,
+        "policy": 5
+      }
+    },
+    "wd": {
+      "file": "wd_ru_ua_entities.jsonl",
+      "unique_qids": 466,
+      "language_coverage_nonempty_label_or_desc": {
+        "en": 466,
+        "ru": 288,
+        "uk": 453
+      },
+      "category_hint_counts": {
+        "person": 369,
+        "event": 35,
+        "organization": 61,
+        "policy": 1
+      }
+    },
+    "overlap": {
+      "intersection": 45,
+      "union": 2202,
+      "wiki_only": 1736,
+      "wd_only": 421,
+      "jaccard": 0.020435967302452316
+    }
+  },
+  "post_classify": {
+    "classified_file": "classified_ru_ua_entities.jsonl",
+    "unique_qids_in_classified": 2202,
+    "attribution_counts": {
+      "mixed": 932,
+      "Ukraine": 841,
+      "other": 31,
+      "Russian": 398
+    },
+    "attribution_by_source_presence": {
+      "mixed": {
+        "wiki_only": 817,
+        "both": 25,
+        "wd_only": 90
+      },
+      "Ukraine": {
+        "wiki_only": 538,
+        "both": 11,
+        "wd_only": 292
+      },
+      "other": {
+        "wiki_only": 29,
+        "wd_only": 2
+      },
+      "Russian": {
+        "wiki_only": 352,
+        "both": 9,
+        "wd_only": 37
+      }
+    },
+    "per_label_overlap_stats": {
+      "Russian": {
+        "wiki": 361,
+        "wd": 46,
+        "inter": 9,
+        "wiki_only": 352,
+        "wd_only": 37,
+        "union": 398,
+        "jaccard": 0.022613065326633167
+      },
+      "Ukraine": {
+        "wiki": 549,
+        "wd": 303,
+        "inter": 11,
+        "wiki_only": 538,
+        "wd_only": 292,
+        "union": 841,
+        "jaccard": 0.013079667063020214
+      },
+      "mixed": {
+        "wiki": 842,
+        "wd": 115,
+        "inter": 25,
+        "wiki_only": 817,
+        "wd_only": 90,
+        "union": 932,
+        "jaccard": 0.02682403433476395
+      },
+      "other": {
+        "wiki": 29,
+        "wd": 2,
+        "inter": 0,
+        "wiki_only": 29,
+        "wd_only": 2,
+        "union": 31,
+        "jaccard": 0.0
+      }
+    }
+  },
+  "note": "No normalization/inference. Uses raw JSONL fields: source.hint and ru_ua_attribution."
+}
