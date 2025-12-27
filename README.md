@@ -1,7 +1,7 @@
 # Russo–Ukrainian War Knowledge Graph (RU/UA)
 Entity Harvest → Unified JSONL → Attribution Classify → Overlap Visualisation
 
-This project builds a Wikidata-backed entity inventory for the **Russo–Ukrainian War** using two complementary harvesting methods, then classifies each entity into **Russian / Ukraine / mixed / other**, and finally produces overlap & distribution visualisations.
+This project builds a Wikidata-backed entity inventory for the **Russo–Ukrainian War Analysis** using two complementary harvesting methods, then classifies each entity into **Russian / Ukraine / mixed / other**, and finally produces overlap & distribution visualisations.
 
 ## Why this exists
 - Wikipedia navboxes provide broad, human-curated link discovery (wide coverage).
@@ -27,7 +27,7 @@ Wikidata SPARQL ─────────┘
 
 ---
 
-## Repository / file layout (suggested)
+## Repository / file layout
 
 ```
 .
