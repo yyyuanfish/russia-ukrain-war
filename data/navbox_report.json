@@ -1,0 +1,21 @@
+{
+  "start_url": "https://en.wikipedia.org/wiki/Russo-Ukrainian_War",
+  "total_internal_links": 2085,
+  "unique_titles": 2014,
+  "resolved_qids": 1781,
+  "overlap_with_prior": 0,
+  "overlap_rate": 0.0,
+  "language_coverage_nonempty_label_or_desc": {
+    "en": 1780,
+    "uk": 1480,
+    "ru": 1480
+  },
+  "category_hint_counts": {
+    "unknown": 1421,
+    "event": 113,
+    "organization": 54,
+    "person": 188,
+    "policy": 5
+  },
+  "note": "Navboxes-only harvest. Attribution is produced by ru_ua_classify_entities.py."
+}
