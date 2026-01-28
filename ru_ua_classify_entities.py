@@ -296,13 +296,13 @@ def structured_score(entity: dict, place_country_map: Dict[str, Set[str]]) -> Tu
     for pid in ATTRIB_PROP_IDS:
         vals = raw.get(pid) or []
         for v in vals:
-            if v == Q_RUSSIA:
+            if v == Q_RUSSIA: # and the Russian proxies
                 ru += WEIGHT_STRONG
                 hits.append(f"{pid}:direct:RU:{v}")
             elif v == Q_UKRAINE:
                 ua += WEIGHT_STRONG
                 hits.append(f"{pid}:direct:UA:{v}")
-            else:
+            else: # i am not sure we need to distinguish particular countries here, maybe `else` is enough
                 if v in OTHER_COUNTRY_HINTS:
                     other += WEIGHT_STRONG
                     hits.append(f"{pid}:direct:OTHER:{v}")
@@ -445,11 +445,11 @@ def main():
             "scores": {"ru": ru_score, "ua": ua_score, "other": other_score},
             "structured_scores": {"ru": s_ru, "ua": s_ua, "other": s_other},
             "text_scores": {"ru": t_ru, "ua": t_ua, "other": t_other},
-            "hits": (s_hits + t_hits)[:200],
+            "hits": (s_hits + t_hits)[:200], # is there any particular meaning for 200?
             "policy": {
                 "other_is_strict": True,
                 "other_threshold": args.other_threshold,
-                "note": "If no RU/UA evidence, label other only with strong explicit other evidence; else mixed."
+                "note": "If no RU/UA evidence, label other only with strong explicit other evidence; else mixed." # move it somewhere globally (not in every data point)
             }
         }
 
