@@ -123,6 +123,7 @@ def fetch_html(url: str) -> BeautifulSoup:
         sys.exit(1)
 
 def extract_links_from_navboxes(soup: BeautifulSoup, base_url: str) -> Set[str]:
+    # maybe we could take not all navboxes... some look a bit unrelated in the end ("Russo-Ukrainian war" and "Russo-Ukrainian War (2022-present)" are related, but "Links to related articles" go a bit too much astray)
     links: Set[str] = set()
     navboxes = soup.select(".navbox")
     print(f"DEBUG: Found {len(navboxes)} navbox elements (footer boxes).")
