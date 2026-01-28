@@ -147,7 +147,7 @@ Merge duplicates across inputs and classify each entity into:
 - If only UA evidence → `Ukraine`
 - If no RU/UA evidence:
   - `other` ONLY if strong explicit third-country evidence reaches the threshold
-  - otherwise → `mixed` (keeps `other` clean)
+  - otherwise → `mixed` (keeps `other` clean) # _hmm, interesting separation, but isn't it a bit far-fetched? For example, some entity would be clearly related to, say, Hungary (not mentioned in third-country codes), yet it ideally should be related to other (example being http://www.wikidata.org/entity/Q117063798 )_
 
 ### Run
 ```bash
@@ -296,3 +296,8 @@ Saved in the visual output directory:
 
 ## License / usage note
 This repo is intended for research and dataset building. Attribution labels are heuristic and auditable via `ru_ua_attribution_detail.hits`.
+
+---
+## Todo
+- [ ] extend to other languages (substitute the var names with `side_1`/`side_2` (?), put the country names as hyperparameters)
+- [ ] add "historical extension", i.e. so that "Russia" would be attributed not only to the Russian Federation, but also to the Russian Empire/Soviet Union 
