@@ -455,11 +455,6 @@ def soup_from_html(html: str) -> BeautifulSoup:
         print("Error: lxml parser not available. Please run: pip install lxml")
         sys.exit(1)
 
-<<<<<<< Updated upstream
-def extract_links_from_navboxes(soup: BeautifulSoup, base_url: str) -> Set[str]:
-    # maybe we could take not all navboxes... some look a bit unrelated in the end ("Russo-Ukrainian war" and "Russo-Ukrainian War (2022-present)" are related, but "Links to related articles" go a bit too much astray)
-=======
-
 def navbox_title_text(navbox) -> str:
     t = navbox.select_one(".navbox-title")
     if t:
@@ -512,7 +507,6 @@ def select_one_navbox(soup: BeautifulSoup, title_query: Optional[str], index: in
 
 
 def extract_links_from_one_navbox(soup: BeautifulSoup, base_url: str, navbox_title: Optional[str], navbox_index: int) -> Set[str]:
->>>>>>> Stashed changes
     links: Set[str] = set()
     navbox = select_one_navbox(soup, navbox_title, navbox_index)
     if navbox is None:

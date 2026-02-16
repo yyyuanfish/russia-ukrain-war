@@ -451,11 +451,7 @@ def main():
             "policy": {
                 "other_is_strict": True,
                 "other_threshold": args.other_threshold,
-<<<<<<< Updated upstream
-                "note": "If no RU/UA evidence, label other only with strong explicit other evidence; else mixed." # move it somewhere globally (not in every data point)
-=======
                 "note": "If no RU/UA evidence: other only when other_score >= threshold; else mixed."
->>>>>>> Stashed changes
             }
         }
 
