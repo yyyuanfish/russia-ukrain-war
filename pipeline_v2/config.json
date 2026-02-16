@@ -1,0 +1,53 @@
+{
+  "conflicting_parties": {
+    "party1": {
+      "ID": "Q159",
+      "allies": [
+        "Q16150196",
+        "Q16746854",
+        "Q16912926",
+        "Q15925436"
+      ]
+    },
+    "party2": {
+      "ID": "Q212",
+      "allies": []
+    }
+  },
+  "languages": {
+    "party1": "ru",
+    "party2": "uk",
+    "party3": "en"
+  },
+  "navbox_seed_url": "https://en.wikipedia.org/wiki/Russo-Ukrainian_War",
+  "navbox_names": [
+    "Russo-Ukrainian war",
+    "Russo-Ukrainian war (2022-present)"
+  ],
+  "category_names": [
+    "Russo-Ukrainian war"
+  ],
+  "categories": {
+    "source_lang": "en",
+    "depth": 1,
+    "strategy": "bfs"
+  },
+  "wikidata": {
+    "limit": null,
+    "no_aliases": false,
+    "ensure_qids": []
+  },
+  "classification": {
+    "other_threshold": 4,
+    "other_country_hints": [
+      "Q30",
+      "Q148",
+      "Q183",
+      "Q145",
+      "Q142",
+      "Q36",
+      "Q184",
+      "Q458"
+    ]
+  }
+}

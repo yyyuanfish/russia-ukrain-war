@@ -350,8 +350,8 @@ def enrich_aliases(records: List[dict], langs=("en", "uk", "ru")) -> None:
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--out", default="wd_ru_ua_entities.jsonl", help="Output JSONL path")
-    ap.add_argument("--array", default="wd_ru_ua_entities.json", help="Output JSON array path")
+    ap.add_argument("--out", default="data/wd_entities.jsonl", help="Output JSONL path")
+    ap.add_argument("--array", default="data/wd_entities.json", help="Output JSON array path")
     ap.add_argument("--limit", type=int, default=None, help="Optional per-query LIMIT (debug)")
     ap.add_argument("--no-aliases", action="store_true", help="Skip alias enrichment (faster)")
     args = ap.parse_args()

@@ -455,7 +455,6 @@ def soup_from_html(html: str) -> BeautifulSoup:
         print("Error: lxml parser not available. Please run: pip install lxml")
         sys.exit(1)
 
-
 def navbox_title_text(navbox) -> str:
     t = navbox.select_one(".navbox-title")
     if t:

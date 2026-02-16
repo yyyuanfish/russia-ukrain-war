@@ -1,146 +1,149 @@
-# Russo–Ukrainian War Knowledge Graph (RU/UA)
-Entity Harvest → Unified JSONL → Attribution Classify → Overlap Visualisation
+# Russo–Ukrainian War Entity Harvesting + Attribution Classification (Wikipedia + Wikidata)
 
+<<<<<<< Updated upstream
 This project builds a Wikidata-backed entity inventory for the **Russo–Ukrainian War Analysis** using two complementary harvesting methods, then classifies each entity into **Russian / Ukraine / mixed / other**, and finally produces overlap & distribution visualisations.
+=======
+This project folder (`/Users/yuanyu/Desktop/Russia Ukrain War`) contains a pipeline to:
+>>>>>>> Stashed changes
 
-## Why this exists
-- Wikipedia navboxes provide broad, human-curated link discovery (wide coverage).
-- Wikidata SPARQL provides targeted, structured discovery (high precision for specific buckets).
-- A strict attribution policy keeps `other` clean and prevents “uncertain war-related” items from being dumped into `other` (they become `mixed`).
-
----
-
-## Pipeline overview
-
-1) Harvest from Wikidata (SPARQL queries)  
-2) Harvest from Wikipedia (bottom navboxes only)  
-3) Merge + classify entities into RU/UA/mixed/other  
-4) Visualise overlap + pre/post distributions
-
-High-level flow:
-
-```
-Wikipedia navboxes (EN) ─┐
-                         ├─> unified JSONL ──> merge ──> classify ──> plots + reports
-Wikidata SPARQL ─────────┘
-```
+1. **Harvest entities (QIDs)** from **Wikidata** via SPARQL queries (people/events/orgs/policies/media narratives).
+2. **Harvest entities (QIDs)** from a selected Wikipedia navbox (default: *Russo-Ukrainian War*) with optional category expansion (`bfs/dfs`, multilingual).
+3. **Merge + classify** all harvested QIDs into **Russian / Ukraine / mixed / other** using structured Wikidata evidence + light text fallback.
+4. **Analyze overlap** between the two harvest methods and generate **figures + a compact overlap report**.
 
 ---
 
+## What’s in this folder
+
+### Scripts
+
+- `ru_ua_harvest_wikidata_entities.py`  
+  SPARQL-harvests Wikidata entities for several buckets (people/events/organizations/policies/media narratives), enriches labels/descriptions/sitelinks/aliases, and writes:
+  - `data/wd_entities.jsonl`
+  - `data/wd_entities.json`
+
+- `ru_ua_harvest_wikipedia_navboxes.py`  
+  Fetches a Wikipedia page, extracts links from a selected navbox, optionally expands categories (EN/RU/UK), resolves titles → QIDs, queries Wikidata for metadata, and writes:
+  - `data/navbox_ru_ua_entities.jsonl`
+  - `data/navbox_report.json`
+
+- `ru_ua_classify_entities.py`  
+  Loads one or more JSONL files from the harvesters, merges duplicates by QID, resolves place→country for referenced places/admin entities, and assigns:
+  - `ru_ua_attribution` in `{Russian, Ukraine, mixed, other}`
+  - `ru_ua_attribution_detail` (scores + evidence hits)
+
+  Writes:
+  - `data/classified_ru_ua_entities.jsonl`
+  - `data/classified_report.json`
+
+- `ru_ua_harvest_visual.py`  
+  Compares **navbox** vs **wikidata** harvest sets and produces overlap figures + `overlap_report_v2.json`.
+
+### Main outputs (typical run)
+
+- `data/wd_entities.jsonl`
+- `data/navbox_ru_ua_entities.jsonl`
+- `data/classified_ru_ua_entities.jsonl`
+- `data/classified_report.json`
+- `data/overlap_analysis_output_v2*/` (plots + overlap report)
+
+---
+
+<<<<<<< Updated upstream
 ## Repository / file layout
+=======
+## Installation
+>>>>>>> Stashed changes
 
-```
-.
-├── ru_ua_harvest_wikidata_entities.py
-├── ru_ua_harvest_wikipedia_navboxes.py
-├── ru_ua_classify_entities.py
-├── ru_ua_harvest_visual.py
-└── outputs/
-    ├── wd_ru_ua_entities.jsonl
-    ├── wd_ru_ua_entities.json
-    ├── navbox_ru_ua_entities.jsonl
-    ├── navbox_report.json
-    ├── classified_ru_ua_entities.jsonl
-    ├── classified_report.json
-    └── overlap_analysis_output/
-        ├── overlap_report_v2.json
-        └── *.png
-```
+### 1) Create & activate a virtual environment (recommended)
 
-Your run used these main files:
-- `wd_ru_ua_entities.jsonl` (Wikidata harvest)
-- `navbox_ru_ua_entities.jsonl` (Wikipedia navbox harvest)
-- `classified_ru_ua_entities.jsonl` + `classified_report.json` (merged + classified)
-- `overlap_analysis_output*/overlap_report_v2.json` + figures (visualisation)
+From the repository root (example from your terminal):
 
----
-
-## Setup
-
-### Create a virtual environment (example)
 ```bash
+cd "/Users/yuanyu/Desktop/Russia Ukrain War"
 python -m venv ru_ua
-source ru_ua/bin/activate
-pip install -U pip
+source ./ru_ua/bin/activate
 ```
 
-### Install dependencies
-Minimum:
+### 2) Install dependencies
+
+You already have a `requirements.txt` at the repo root. It currently contains these core packages:
+
+- requests>=2.31.0
+- beautifulsoup4>=4.12.0
+- SPARQLWrapper>=2.0.0
+
+Install them:
+
 ```bash
-pip install requests beautifulsoup4 lxml SPARQLWrapper numpy matplotlib
+pip install -r requirements.txt
 ```
 
-Optional (only if you want `--venn`):
+**Additional packages needed by some scripts:**
+
+- `ru_ua_harvest_wikipedia_navboxes.py` uses BeautifulSoup with the **lxml** parser → install `lxml`
+- `ru_ua_harvest_visual.py` needs `numpy`, `matplotlib`, `matplotlib-venn`
+
+Install the extras:
+
 ```bash
-pip install matplotlib-venn
+pip install lxml numpy matplotlib matplotlib-venn
 ```
+
+> If you prefer a single command, you can also add the extras into `requirements.txt`.
 
 ---
 
-## Script 1 — Wikidata harvest
-**File:** `ru_ua_harvest_wikidata_entities.py`
+## Quickstart (end-to-end)
 
-### What it does
-- Runs WDQS queries for several buckets (e.g., people/events/organizations/policies/media narratives).
-- Deduplicates results into a single QID set.
-- Enriches multilingual fields (labels/descriptions/aliases depending on script settings).
-- Writes:
-  - JSONL (`wd_ru_ua_entities.jsonl`)
-  - JSON array (`wd_ru_ua_entities.json`)
+Run all commands from the project root:
 
-### Run
 ```bash
-python ru_ua_harvest_wikidata_entities.py
+cd "/Users/yuanyu/Desktop/Russia Ukrain War"
 ```
 
-Typical console output includes:
-- “Querying people... events... organizations... policies... media narratives...”
-- “Deduped total: 462”
-- “Ensuring QIDs ... After ensure, total: 466”
-- “Wrote JSONL ... (466 records)”
+### Step A — Wikipedia navbox harvest (example you are using)
 
----
-
-## Script 2 — Wikipedia navbox harvest (bottom-of-page only)
-**File:** `ru_ua_harvest_wikipedia_navboxes.py`
-
-### What it does
-- Fetches a Wikipedia start page (default: Russo-Ukrainian_War).
-- Extracts links ONLY from **bottom navboxes** (`.navbox` elements in the footer).
-- Converts enwiki titles → Wikidata QIDs.
-- Enriches QIDs (labels/descriptions/sitelinks + instance-of + raw attribution properties).
-- Writes:
-  - JSONL (`navbox_ru_ua_entities.jsonl`)
-  - Report JSON (`navbox_report.json`)
-
-### Run
 ```bash
-python ru_ua_harvest_wikipedia_navboxes.py
+python3 "/Users/yuanyu/Desktop/Russia Ukrain War/ru_ua_harvest_wikipedia_navboxes.py" \
+  --start-url "https://en.wikipedia.org/wiki/Russo-Ukrainian_War" \
+  --navbox-title "Russo-Ukrainian war" \
+  --navbox-index 0 \
+  --include-categories \
+  --category-strategy bfs \
+  --category-depth 1 \
+  --category-langs en,ru,uk \
+  --out "/Users/yuanyu/Desktop/Russia Ukrain War/data/navbox_ru_ua_entities.jsonl" \
+  --out-report "/Users/yuanyu/Desktop/Russia Ukrain War/data/navbox_report.json"
 ```
 
-Example output (your run):
-- Total links collected from boxes: 2085
-- Unique titles: 2014
-- Resolved QIDs: 1781
-- Writes `navbox_ru_ua_entities.jsonl` and prints the compact report.
+Outputs:
+- `/Users/yuanyu/Desktop/Russia Ukrain War/data/navbox_ru_ua_entities.jsonl`
+- `/Users/yuanyu/Desktop/Russia Ukrain War/data/navbox_report.json`
 
----
+#### Navbox command parameters
 
-## Script 3 — Merge + classify (RU/UA/mixed/other)
-**File:** `ru_ua_classify_entities.py`
+- `--start-url`: seed page URL.
+- `--navbox-title`: preferred navbox title substring match.
+- `--navbox-index`: fallback navbox index if title match fails.
+- `--include-categories`: enables category graph expansion.
+- `--category-strategy`: category traversal mode (`bfs`/`dfs`), `bfs` recommended.
+- `--category-depth`: category walk depth (`1` is balanced).
+- `--category-langs`: languages for category walk (e.g., `en,ru,uk`).
+- `--out`: output JSONL path.
+- `--out-report`: summary report JSON path.
 
-### Goal
-Merge duplicates across inputs and classify each entity into:
-- `Russian`
-- `Ukraine`
-- `mixed`
-- `other` (strict)
+#### Extra navbox tuning/debug parameters (optional)
 
-### Evidence sources (highest → lowest)
-1) Structured properties (e.g., citizenship/country/origin/HQ/location)  
-2) Indirect structured inference: place/admin → country (bounded depth)  
-3) Text fallback: regex on labels/descriptions/aliases in EN/RU/UK  
+- `--category-keywords`: comma-separated keyword filter for subcategory expansion.
+- `--category-max-categories`: per-language hard cap on visited categories.
+- `--category-max-titles`: per-language hard cap on collected titles.
+- `--category-max-members-per-category`: cap members fetched per category.
+- `--category-progress-every`: print progress every N visited categories.
+- `--sleep`: API pacing delay.
+- `--debug-save-html`: save parsed HTML to debug navbox selection.
 
+<<<<<<< Updated upstream
 ### Strict “other” policy (important)
 - If RU and UA evidence both exist → `mixed`
 - If only RU evidence → `Russian`
@@ -148,152 +151,172 @@ Merge duplicates across inputs and classify each entity into:
 - If no RU/UA evidence:
   - `other` ONLY if strong explicit third-country evidence reaches the threshold
   - otherwise → `mixed` (keeps `other` clean) # _hmm, interesting separation, but isn't it a bit far-fetched? For example, some entity would be clearly related to, say, Hungary (not mentioned in third-country codes), yet it ideally should be related to other (example being http://www.wikidata.org/entity/Q117063798 )_
+=======
+### Step B — Wikidata SPARQL harvest
+>>>>>>> Stashed changes
 
-### Run
 ```bash
-python ru_ua_classify_entities.py \
-  --in navbox_ru_ua_entities.jsonl wd_ru_ua_entities.jsonl \
-  --out classified_ru_ua_entities.jsonl \
-  --report classified_report.json
+python3 "/Users/yuanyu/Desktop/Russia Ukrain War/ru_ua_harvest_wikidata_entities.py" \
+  --out "/Users/yuanyu/Desktop/Russia Ukrain War/data/wd_entities.jsonl" \
+  --array "/Users/yuanyu/Desktop/Russia Ukrain War/data/wd_entities.json"
 ```
 
-### Output
-- `classified_ru_ua_entities.jsonl`
-- `classified_report.json`
+Outputs:
+- `/Users/yuanyu/Desktop/Russia Ukrain War/data/wd_entities.jsonl`
+- `/Users/yuanyu/Desktop/Russia Ukrain War/data/wd_entities.json`
 
-Each record gains:
-- `ru_ua_attribution`
-- `ru_ua_attribution_detail` (scores + evidence hits + policy metadata)
+#### Wikidata command parameters
 
----
+- `--out`: output JSONL path used by classifier.
+- `--array`: output pretty JSON array path (same records as JSONL).
+- `--limit` (optional): debug mode, limit rows per query.
+- `--no-aliases` (optional): skip alias enrichment for speed.
 
-## Script 4 — Overlap & visualisation
-**File:** `ru_ua_harvest_visual.py`
+### Step C — Merge + classify (Russian / Ukraine / mixed / other)
 
-### What it does (v2 approach)
-- Uses the two *pre-classify* JSONLs to compute overlap.
-- Uses the *post-classify* JSONL to compute attribution distributions and “which source contributes what”.
-- Generates plots + a JSON report.
-
-### Required arguments
-The script requires:
-- `--wiki`
-- `--wd`
-- `--classified`
-
-### Run (with QID lists)
 ```bash
-python ru_ua_harvest_visual.py \
-  --wiki navbox_ru_ua_entities.jsonl \
-  --wd wd_ru_ua_entities.jsonl \
-  --classified classified_ru_ua_entities.jsonl \
-  --outdir overlap_analysis_output2 \
+python3 "/Users/yuanyu/Desktop/Russia Ukrain War/ru_ua_classify_entities.py" \
+  --in "/Users/yuanyu/Desktop/Russia Ukrain War/data/navbox_ru_ua_entities.jsonl" "/Users/yuanyu/Desktop/Russia Ukrain War/data/wd_entities.jsonl" \
+  --out "/Users/yuanyu/Desktop/Russia Ukrain War/data/classified_ru_ua_entities.jsonl" \
+  --report "/Users/yuanyu/Desktop/Russia Ukrain War/data/classified_report.json"
+```
+
+#### Classify command parameters
+
+- `--in`: one or more input JSONL files from harvesters (here: navbox + wikidata).
+- `--out`: output classified JSONL.
+- `--report`: compact report JSON.
+- `--other-threshold` (optional): minimum `other_score` to assign `other` when RU/UA evidence is absent.
+
+### Step D — Overlap analysis + figures (with per-label QID lists)
+
+```bash
+python3 "/Users/yuanyu/Desktop/Russia Ukrain War/ru_ua_harvest_visual.py" \
+  --wiki "/Users/yuanyu/Desktop/Russia Ukrain War/data/navbox_ru_ua_entities.jsonl" \
+  --wd "/Users/yuanyu/Desktop/Russia Ukrain War/data/wd_entities.jsonl" \
+  --classified "/Users/yuanyu/Desktop/Russia Ukrain War/data/classified_ru_ua_entities.jsonl" \
+  --outdir "/Users/yuanyu/Desktop/Russia Ukrain War/data/overlap_analysis_output_v2" \
+  --report "overlap_report_v2.json" \
   --write-qid-lists
 ```
 
-Optional Venn diagrams:
+Optional Venn run:
+
 ```bash
-python ru_ua_harvest_visual.py \
-  --wiki navbox_ru_ua_entities.jsonl \
-  --wd wd_ru_ua_entities.jsonl \
-  --classified classified_ru_ua_entities.jsonl \
-  --outdir overlap_analysis_output3 \
+python3 "/Users/yuanyu/Desktop/Russia Ukrain War/ru_ua_harvest_visual.py" \
+  --wiki "/Users/yuanyu/Desktop/Russia Ukrain War/data/navbox_ru_ua_entities.jsonl" \
+  --wd "/Users/yuanyu/Desktop/Russia Ukrain War/data/wd_entities.jsonl" \
+  --classified "/Users/yuanyu/Desktop/Russia Ukrain War/data/classified_ru_ua_entities.jsonl" \
+  --outdir "/Users/yuanyu/Desktop/Russia Ukrain War/data/overlap_analysis_output_v2_venn" \
+  --report "overlap_report_v2.json" \
   --venn
 ```
 
-### Outputs
-- Directory: `overlap_analysis_output*/`
-- JSON: `overlap_report_v2.json`
-- Multiple PNG plots (global overlap, pre distributions, post distributions, per-label overlap, per-label jaccard)
-- Optional per-label QID lists (if `--write-qid-lists`)
+#### Visual command parameters
+
+- `--wiki`: navbox harvester JSONL.
+- `--wd`: wikidata harvester JSONL.
+- `--classified`: classifier output JSONL.
+- `--outdir`: output directory for plots and report.
+- `--report`: report filename inside `--outdir`.
+- `--write-qid-lists` (optional): writes per-label overlap QID lists.
+- `--venn` (optional): outputs Venn diagrams (requires `matplotlib-venn`).
 
 ---
 
-## Data format (JSONL schema)
+## How classification works (high level)
 
-Both harvesters write a compatible unified schema so they can be merged:
+Each entity gets scores from two evidence types:
 
-Common fields (typical):
-- `qid` (e.g., `"Q212"`)
-- `labels` / `descriptions` (en/ru/uk)
-- `aliases` (en/ru/uk; richer on Wikidata harvest)
-- `sitelinks`
-- `instance_of`
-- `raw_attrib_qids` (property → list of QIDs)
+1. **Structured evidence (higher weight)** from these properties (when present):
+   - P27, P17, P495, P159, P131, P276, P19, P740, P551
+2. **Text fallback (lower weight)** from labels/descriptions/aliases in EN/RU/UK (regex patterns)
 
-Classifier-added fields:
-- `ru_ua_attribution`: `Russian|Ukraine|mixed|other`
-- `ru_ua_attribution_detail`:
-  - `scores` (ru/ua/other)
-  - split: structured vs text score
-  - `hits`: triggered evidence rules (auditable)
+It then assigns:
+
+- **mixed**: RU evidence > 0 and UA evidence > 0  
+- **Russian**: RU evidence > 0 and UA evidence == 0  
+- **Ukraine**: UA evidence > 0 and RU evidence == 0  
+- **other**: only if RU/UA evidence is absent **and** `other_score >= other_threshold`  
+- **mixed** (fallback): if RU/UA evidence is absent and `other_score` is not strong enough
+
+To audit why something was labeled, inspect:
+- `ru_ua_attribution_detail.hits` in `classified_ru_ua_entities.jsonl`
 
 ---
 
 ## Reports
 
-### navbox_report.json
-A compact summary of the navbox harvest:
-- start_url
-- link/title/QID totals
-- language coverage
-- category_hint_counts
+### `navbox_report.json`
+Summarizes:
+- navbox selection (`navbox_title_query`, `navbox_index`)
+- whether category expansion was enabled
+- category settings (`depth`, `strategy`, `langs`, limit knobs)
+- root/visited category counts per language
+- title counts per language + resolved-title counts per language
+- total resolved QIDs
 
-### classified_report.json
-Compact “pre vs post” report:
-- pre_classify totals by source
-- overlap between inputs (intersection/union/Jaccard)
+### `classified_report.json`
+Compact pre/post summary:
+- input row counts + merged QIDs
+- per-source-type stats (navboxes vs wikidata SPARQL)
+- overlap between the two input files (intersection/union/jaccard)
 - merged language coverage + category hints
-- after_classify attribution_counts
+- final attribution counts after classification
 
-### overlap_report_v2.json
-Saved in the visual output directory:
-- global overlap
-- per-label overlap composition
-- per-label Jaccard
-- source contribution breakdown per label
+### `overlap_report_v2.json` (inside `overlap_analysis_output*/`)
+Overlap stats + paths to generated figures/lists.
 
 ---
 
-## Example run numbers (from your output)
+## Common issues (from your terminal logs)
 
-### Pre-classify
-- Total rows loaded: 2247
-- Unique QIDs merged: 2202
-- navboxes unique QIDs: 1781
-- wikidata unique QIDs: 466
-- intersection: 45
-- union: 2202
-- jaccard: ~0.0204
+### 1) `error: the following arguments are required: --in, --out`
+You ran `ru_ua_classify_entities.py` without required CLI args. Use:
 
-### After classify (label counts)
-- mixed: 932
-- Ukraine: 841
-- Russian: 398
-- other: 31
+```bash
+python3 "/Users/yuanyu/Desktop/Russia Ukrain War/ru_ua_classify_entities.py" \
+  --in "/Users/yuanyu/Desktop/Russia Ukrain War/data/navbox_ru_ua_entities.jsonl" "/Users/yuanyu/Desktop/Russia Ukrain War/data/wd_entities.jsonl" \
+  --out "/Users/yuanyu/Desktop/Russia Ukrain War/data/classified_ru_ua_entities.jsonl"
+```
+
+### 2) `HTTP Error 504: Gateway Timeout` (WDQS)
+Wikidata Query Service can time out when a query is expensive or the service is busy.
+Mitigations already added in your classifier version:
+- smaller batching for place→country
+- bounded-depth admin traversal instead of `P131*`
+- slower pacing + longer timeout
+
+If it still happens:
+- rerun later
+- reduce batch size further
+- temporarily reduce the number of QIDs to resolve (debug limit)
+
+### 3) `FileNotFoundError: ... data/wd_entities.jsonl`
+That path didn’t exist from your current working directory.
+Fix: `cd` into the folder where the file actually lives, or pass the correct relative/absolute path.
+
+### 4) `414 Request-URI Too Long` (Wikipedia API title→QID)
+This can happen when a language batch contains many long titles.
+Current script versions mitigate this by using POST + automatic chunk splitting.
+If needed, also lower expansion size:
+- use `--category-depth 1`
+- set caps like `--category-max-categories 150`
+
+### 5) zsh `parse error near 'yuanyu@MacBook-Air'`
+This happens when you accidentally paste your prompt text into the command.
+Only paste the command lines starting with `python ...`.
 
 ---
 
-## Troubleshooting
+## Data & licensing notes
 
-### 1) “required arguments …”
-- Visual script requires `--wiki --wd --classified`.
-- Classifier requires `--in --out`.
-
-### 2) FileNotFoundError
-- You ran with paths like `data/wd_entities.jsonl` that didn’t exist from your current working directory.
-- Fix by using correct relative paths or absolute paths.
-
-### 3) HTTP 504 from WDQS
-- WDQS can time out (gateway timeout).
-- Rerun, reduce query pressure, or keep batches small.
-
-### 4) zsh parse error near `yuanyu@MacBook-Air`
-- You pasted the prompt into the command.
-- Copy only the command lines.
+- Wikipedia content is licensed under CC BY-SA; Wikidata content under CC0.
+- This repo stores **QIDs and metadata** harvested from those sources; always respect the original licenses when publishing derived datasets.
 
 ---
 
+<<<<<<< Updated upstream
 ## License / usage note
 This repo is intended for research and dataset building. Attribution labels are heuristic and auditable via `ru_ua_attribution_detail.hits`.
 
@@ -301,3 +324,24 @@ This repo is intended for research and dataset building. Attribution labels are 
 ## Todo
 - [ ] extend to other languages (substitute the var names with `side_1`/`side_2` (?), put the country names as hyperparameters)
 - [ ] add "historical extension", i.e. so that "Russia" would be attributed not only to the Russian Federation, but also to the Russian Empire/Soviet Union 
+=======
+## Minimal folder structure (example)
+
+```
+/Users/yuanyu/Desktop/Russia Ukrain War/
+  ru_ua_harvest_wikidata_entities.py
+  ru_ua_harvest_wikipedia_navboxes.py
+  ru_ua_classify_entities.py
+  ru_ua_harvest_visual.py
+  data/
+    wd_entities.jsonl
+    navbox_ru_ua_entities.jsonl
+    classified_ru_ua_entities.jsonl
+    classified_report.json
+    navbox_report.json
+    overlap_analysis_output_v2/
+      overlap_report_v2.json
+      *.png
+      qidlist_*.txt
+```
+>>>>>>> Stashed changes

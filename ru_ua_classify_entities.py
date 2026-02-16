@@ -246,7 +246,6 @@ SELECT ?place ?country WHERE {{
 
     return out
 
-
 def text_score(entity: dict) -> Tuple[int, int, int, List[str]]:
     """
     Returns (ru_score, ua_score, other_score, hits)
@@ -337,6 +336,9 @@ def decide_label(ru_score: int, ua_score: int, other_score: int, other_strict_th
     if ua_score > 0 and ru_score == 0:
         return "Ukraine"
 
+    # No RU/UA evidence:
+    # - strong third-party evidence => other
+    # - otherwise keep uncertain war-related items in mixed
     if other_score >= other_strict_threshold:
         return "other"
     return "mixed"
@@ -449,7 +451,11 @@ def main():
             "policy": {
                 "other_is_strict": True,
                 "other_threshold": args.other_threshold,
+<<<<<<< Updated upstream
                 "note": "If no RU/UA evidence, label other only with strong explicit other evidence; else mixed." # move it somewhere globally (not in every data point)
+=======
+                "note": "If no RU/UA evidence: other only when other_score >= threshold; else mixed."
+>>>>>>> Stashed changes
             }
         }
 
