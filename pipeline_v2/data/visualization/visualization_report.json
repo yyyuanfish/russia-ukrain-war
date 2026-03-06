@@ -1,0 +1,128 @@
+{
+  "sources": {
+    "files": {
+      "wikidata": "/Users/yuanyu/Desktop/Russia Ukrain War/pipeline_v2/data/entities/wikidata_entities.jsonl",
+      "navboxes": "/Users/yuanyu/Desktop/Russia Ukrain War/pipeline_v2/data/entities/navboxes_entities.jsonl",
+      "categories": "/Users/yuanyu/Desktop/Russia Ukrain War/pipeline_v2/data/entities/categories_entities.jsonl"
+    },
+    "sizes": {
+      "wikidata": 2722,
+      "navboxes": 131,
+      "categories": 1315,
+      "union": 4056
+    },
+    "overlap": {
+      "wd_nav": 17,
+      "wd_cat": 53,
+      "nav_cat": 53,
+      "all_three": 11
+    }
+  },
+  "classified": {
+    "file": "/Users/yuanyu/Desktop/Russia Ukrain War/pipeline_v2/data/classified_entities.jsonl",
+    "rows": 4056,
+    "attribution_counts": {
+      "other": 1011,
+      "party1": 428,
+      "party2": 2495,
+      "mixed": 122
+    },
+    "source_bucket_counts": {
+      "nav_cat": 42,
+      "wd_only": 2663,
+      "cat_only": 1220,
+      "nav_only": 72,
+      "all_three": 11,
+      "wd_cat": 42,
+      "wd_nav": 6
+    },
+    "by_label_source_bucket": {
+      "other": {
+        "nav_cat": 9,
+        "wd_only": 438,
+        "cat_only": 528,
+        "nav_only": 18,
+        "wd_cat": 17,
+        "all_three": 1
+      },
+      "party1": {
+        "cat_only": 333,
+        "wd_only": 78,
+        "nav_cat": 5,
+        "nav_only": 7,
+        "wd_cat": 4,
+        "all_three": 1
+      },
+      "party2": {
+        "wd_only": 2119,
+        "cat_only": 291,
+        "nav_cat": 24,
+        "wd_cat": 15,
+        "nav_only": 39,
+        "wd_nav": 5,
+        "all_three": 2
+      },
+      "mixed": {
+        "cat_only": 68,
+        "all_three": 7,
+        "nav_only": 8,
+        "nav_cat": 4,
+        "wd_only": 28,
+        "wd_nav": 1,
+        "wd_cat": 6
+      }
+    },
+    "label_unique_qids": {
+      "other": 1011,
+      "party1": 428,
+      "party2": 2495,
+      "mixed": 122
+    },
+    "language_coverage_nonempty_label_or_desc": {
+      "en": 1913,
+      "ru": 1512,
+      "uk": 3736
+    }
+  },
+  "visualization_config": {
+    "language_order": [
+      "en",
+      "ru",
+      "uk"
+    ],
+    "attribution_display_names": {
+      "party1": "ru",
+      "party2": "uk",
+      "mixed": "mixed",
+      "other": "other"
+    },
+    "source_display_names": {
+      "wikidata": "Wikidata",
+      "navboxes": "Wikipedia navboxes",
+      "categories": "Wikipedia categories"
+    },
+    "venn": {
+      "enabled": true,
+      "global": true,
+      "per_label": true,
+      "source_labels": [
+        "Wikidata",
+        "Wikipedia navboxes",
+        "Wikipedia categories"
+      ]
+    }
+  },
+  "entity_files": {
+    "wikidata": "wikidata_entities.jsonl",
+    "navboxes": "navboxes_entities.jsonl",
+    "categories": "categories_entities.jsonl"
+  },
+  "fallback_config": {
+    "field_name": "legacy_attribution",
+    "to_internal": {
+      "mixed": "mixed",
+      "other": "other"
+    }
+  },
+  "note": "Uses attribution field when present; fallback field is config-driven."
+}

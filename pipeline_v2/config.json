@@ -1,7 +1,99 @@
 {
+  "_help": {
+    "note": [
+      "Documentation-only block. Scripts ignore this section.",
+      "Change values outside _help to customize the pipeline."
+    ],
+    "languages": {
+      "all": "Default: [\"en\", \"ru\", \"uk\"]. Used by category crawl, text scoring, Wikidata alias enrichment, and visualization language order.",
+      "party1": "Default role language for side 1 (used by visualization label for party1).",
+      "party2": "Default role language for side 2 (used by visualization label for party2).",
+      "party3": "Optional third-language anchor for research setup."
+    },
+    "conflicting_parties": {
+      "party1.ID": "Required: Wikidata QID of side 1 country.",
+      "party1.label": "Optional display label for side 1 (used by classification.output_labels fallback).",
+      "party1.allies": "Optional list of side 1 allied/proxy QIDs.",
+      "party2.ID": "Required: Wikidata QID of side 2 country.",
+      "party2.label": "Optional display label for side 2 (used by classification.output_labels fallback).",
+      "party2.allies": "Optional list of side 2 allied/proxy QIDs."
+    },
+    "navbox_seed_url": "Default: Russo-Ukrainian War EN page. Can be any seed page that contains your target navboxes.",
+    "navbox_names": "List of navbox titles to extract from the seed page. Add/remove titles to control breadth.",
+    "category_names": "List of root category names (without or with 'Category:' prefix).",
+    "categories": {
+      "source_lang": "Default: \"en\". Language of names in category_names.",
+      "langs": "Default: [\"en\", \"ru\", \"uk\"]. Target wiki languages to crawl.",
+      "depth": "Default: 1. Increase for broader coverage; slower and noisier.",
+      "strategy": "Default: \"bfs\". bfs is broader near the root; dfs explores deeper chains first.",
+      "use_keyword_filter": "Default: true. true keeps traversal focused by keyword-matching subcategories; false expands more broadly.",
+      "keywords": "Optional global keyword list applied to all crawl languages.",
+      "keywords_by_lang": "Optional per-language keyword lists. If provided, overrides global keywords for that language."
+    },
+    "wikidata": {
+      "seed_qids": "Optional explicit conflict seed QIDs (recommended for non-standard cases).",
+      "seed_from_navbox_page": "Default: true. Resolve seed QID from navbox_seed_url page.",
+      "limit": "Default: null (no explicit LIMIT). Set integer for fast debugging.",
+      "no_aliases": "Default: false. true skips alias enrichment and runs faster.",
+      "aliases.enabled": "Default: true. Whether alias enrichment is enabled.",
+      "aliases.max_total_per_qid": "Default: 100 in this template. Caps total aliases per QID across all languages (0 means unlimited).",
+      "aliases.max_per_lang": "Default: 40 in this template. Caps aliases per language per QID (0 means unlimited).",
+      "ensure_qids": "Default: []. Force-add specific QIDs if queries miss them.",
+      "type_anchors": "Optional map of semantic type anchors (QIDs) used by generic bucket queries.",
+      "relation_properties": "Optional map of relation property IDs used in generic bucket queries (part_of/conflict_participant/participant_in/main_subject).",
+      "bucket_queries": "Optional custom SPARQL WHERE blocks by bucket name. Use {seed_values} placeholder to inject seed QIDs."
+    },
+    "harvest_hints": {
+      "instance_of_map": "Optional map from source.hint label -> list of instance-of QIDs. Used in all harvesters."
+    },
+    "classification": {
+      "other_threshold": "Default: 4 (kept for auditing even when no-party-evidence defaults to other).",
+      "attribution_properties": "Default: [\"P27\",\"P17\",\"P495\",\"P159\",\"P131\",\"P276\",\"P19\",\"P740\",\"P551\"]. These properties are harvested into raw_attrib_qids and used for structured scoring.",
+      "place_country_resolution": {
+        "country_property": "Default: \"P17\". Property used as the country anchor.",
+        "admin_property": "Default: \"P131\". Property used to climb administrative hierarchy.",
+        "max_admin_depth": "Default: 3. Number of P131 hops when inferring country from place/admin entities.",
+        "place_properties": "Default: [\"P159\",\"P131\",\"P276\",\"P19\",\"P740\",\"P551\"]. Properties treated as place-like in structured scoring.",
+        "direct_country_properties": "Default: [\"P17\",\"P27\",\"P495\"]. Direct country-like properties for other-country guessing.",
+        "batch_size": "Default: 80. Batch size for place->country SPARQL resolution.",
+        "sleep_seconds": "Default: 0.2. Delay between place->country SPARQL batches."
+      },
+      "other_country_hints": "Third-country anchor QIDs for structured scoring.",
+      "other_country_text_map": "Regex -> country QID map for guessing top other countries.",
+      "party1_patterns": "Regex list by language for side 1 textual evidence.",
+      "party2_patterns": "Regex list by language for side 2 textual evidence.",
+      "other_patterns": "Regex list by language for third-party textual evidence.",
+      "output_labels": "Optional named-label output map. Set enabled=true to write country names (field_name defaults to country_attribution).",
+      "legacy_output": "Optional compatibility output map. Set enabled=true to emit an extra legacy field (field_name defaults to legacy_attribution).",
+      "report_label_lang": "Optional language code for third-country labels in attribution report (defaults to languages.party3, then en)."
+    },
+    "visualization": {
+      "language_order": "Default: languages.all. Controls x-axis order in language coverage chart.",
+      "attribution_display_names": "Optional map for plot labels: party1/party2/mixed/other.",
+      "source_display_names": "Optional map for source labels: wikidata/navboxes/categories.",
+      "entity_files": "Optional filenames for source JSONL files inside entities_folder.",
+      "venn": {
+        "enabled": "Default: true. Enable/disable Venn plotting.",
+        "global": "Default: true. Output one global 3-set Venn.",
+        "per_label": "Default: true. Output per-label Venn plots (party1/party2/mixed/other).",
+        "source_labels": "Optional list of 3 labels for Venn set names (order: wikidata, navboxes, categories)."
+      }
+    },
+    "pipeline": {
+      "run": "Enable/disable full-pipeline steps in run_pipeline.py.",
+      "paths": {
+        "entities_folder": "Default: data/entities",
+        "classified_output": "Default: data/classified_entities.jsonl",
+        "classified_report": "Default: data/classified_report.json",
+        "visualization_outdir": "Default: data/visualization",
+        "visualization_report": "Default: visualization_report.json (filename inside visualization_outdir)."
+      }
+    }
+  },
   "conflicting_parties": {
     "party1": {
       "ID": "Q159",
+      "label": "Russia",
       "allies": [
         "Q16150196",
         "Q16746854",
@@ -11,10 +103,16 @@
     },
     "party2": {
       "ID": "Q212",
+      "label": "Ukraine",
       "allies": []
     }
   },
   "languages": {
+    "all": [
+      "en",
+      "ru",
+      "uk"
+    ],
     "party1": "ru",
     "party2": "uk",
     "party3": "en"
@@ -29,16 +127,168 @@
   ],
   "categories": {
     "source_lang": "en",
+    "langs": [
+      "en",
+      "ru",
+      "uk"
+    ],
     "depth": 1,
-    "strategy": "bfs"
+    "strategy": "bfs",
+    "use_keyword_filter": true
   },
   "wikidata": {
+    "seed_qids": [],
+    "seed_from_navbox_page": true,
     "limit": null,
     "no_aliases": false,
-    "ensure_qids": []
+    "aliases": {
+      "enabled": true,
+      "max_total_per_qid": 100,
+      "max_per_lang": 40
+    },
+    "ensure_qids": [],
+    "type_anchors": {
+      "human": "Q5",
+      "battle": "Q178561",
+      "military_conflict": "Q180684",
+      "attack": "Q645883",
+      "mass_killing": "Q167442",
+      "military_unit": "Q176799",
+      "government": "Q7188",
+      "organization": "Q43229",
+      "law": "Q820655",
+      "public_policy": "Q7163",
+      "economic_sanction": "Q618779",
+      "resolution": "Q182994",
+      "conspiracy_theory": "Q17379835",
+      "propaganda": "Q215080"
+    },
+    "relation_properties": {
+      "part_of": "P361",
+      "conflict_participant": "P607",
+      "participant_in": "P1344",
+      "main_subject": "P921"
+    },
+    "bucket_queries": {}
+  },
+  "harvest_hints": {
+    "instance_of_map": {
+      "person": [
+        "Q5"
+      ],
+      "event": [
+        "Q178561",
+        "Q180684",
+        "Q645883",
+        "Q167442"
+      ],
+      "organization": [
+        "Q176799",
+        "Q43229",
+        "Q7188"
+      ],
+      "policy": [
+        "Q820655",
+        "Q7163",
+        "Q618779",
+        "Q182994"
+      ],
+      "media_narrative": [
+        "Q17379835",
+        "Q215080"
+      ]
+    }
+  },
+  "visualization": {
+    "language_order": [
+      "en",
+      "ru",
+      "uk"
+    ],
+    "attribution_display_names": {},
+    "source_display_names": {},
+    "entity_files": {
+      "wikidata": "wikidata_entities.jsonl",
+      "navboxes": "navboxes_entities.jsonl",
+      "categories": "categories_entities.jsonl"
+    },
+    "venn": {
+      "enabled": true,
+      "global": true,
+      "per_label": true,
+      "source_labels": [
+        "Wikidata",
+        "Wikipedia navboxes",
+        "Wikipedia categories"
+      ]
+    }
+  },
+  "pipeline": {
+    "run": {
+      "wikidata": true,
+      "navboxes": true,
+      "categories": true,
+      "attribution": true,
+      "visualization": true
+    },
+    "paths": {
+      "entities_folder": "data/entities",
+      "classified_output": "data/classified_entities.jsonl",
+      "classified_report": "data/classified_report.json",
+      "visualization_outdir": "data/visualization",
+      "visualization_report": "visualization_report.json"
+    }
   },
   "classification": {
     "other_threshold": 4,
+    "report_label_lang": "en",
+    "attribution_properties": [
+      "P27",
+      "P17",
+      "P495",
+      "P159",
+      "P131",
+      "P276",
+      "P19",
+      "P740",
+      "P551"
+    ],
+    "place_country_resolution": {
+      "country_property": "P17",
+      "admin_property": "P131",
+      "max_admin_depth": 3,
+      "place_properties": [
+        "P159",
+        "P131",
+        "P276",
+        "P19",
+        "P740",
+        "P551"
+      ],
+      "direct_country_properties": [
+        "P17",
+        "P27",
+        "P495"
+      ],
+      "batch_size": 80,
+      "sleep_seconds": 0.2
+    },
+    "output_labels": {
+      "enabled": false,
+      "field_name": "country_attribution",
+      "party1": "",
+      "party2": "",
+      "mixed": "mixed",
+      "other": "other"
+    },
+    "legacy_output": {
+      "enabled": false,
+      "field_name": "legacy_attribution",
+      "party1": "",
+      "party2": "",
+      "mixed": "mixed",
+      "other": "other"
+    },
     "other_country_hints": [
       "Q30",
       "Q148",
@@ -48,6 +298,69 @@
       "Q36",
       "Q184",
       "Q458"
-    ]
+    ],
+    "other_country_text_map": [
+      {
+        "pattern": "united states|american|u\\.?s\\.?",
+        "qid": "Q30"
+      },
+      {
+        "pattern": "\\bchina\\b|\\bchinese\\b|\\bprc\\b",
+        "qid": "Q148"
+      }
+    ],
+    "party1_patterns": {
+      "en": [
+        "\\\\brussian\\\\b",
+        "\\\\brussia\\\\b",
+        "\\\\brf\\\\b",
+        "\\\\brussian[- ]backed\\\\b"
+      ],
+      "ru": [
+        "\\\\bросси",
+        "\\\\bрусск",
+        "\\\\bрф\\\\b"
+      ],
+      "uk": [
+        "\\\\bросі",
+        "\\\\bросійськ",
+        "\\\\bрф\\\\b"
+      ]
+    },
+    "party2_patterns": {
+      "en": [
+        "\\\\bukrain",
+        "\\\\bukraine\\\\b"
+      ],
+      "ru": [
+        "\\\\bукраин",
+        "\\\\bукраинец",
+        "\\\\bукраинка"
+      ],
+      "uk": [
+        "\\\\bукраїн",
+        "\\\\bукраїнець",
+        "\\\\bукраїнка"
+      ]
+    },
+    "other_patterns": {
+      "en": [
+        "\\\\bamerican\\\\b",
+        "\\\\bunited states\\\\b",
+        "\\\\bu\\\\.?s\\\\.?\\\\b",
+        "\\\\bchinese\\\\b",
+        "\\\\bchina\\\\b"
+      ],
+      "ru": [
+        "\\\\bамерикан",
+        "\\\\bкита",
+        "\\\\bкнр\\\\b"
+      ],
+      "uk": [
+        "\\\\bамерикан",
+        "\\\\bкита",
+        "\\\\bкнр\\\\b"
+      ]
+    }
   }
 }

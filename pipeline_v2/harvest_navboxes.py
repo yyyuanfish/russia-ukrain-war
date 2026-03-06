@@ -6,7 +6,7 @@ Script: harvest_navboxes.py
 
 Main purpose:
 - Read `navbox_names` from `config.json`.
-- Open the seed Wikipedia page (`navbox_seed_url` in config, or default RU-UA page).
+- Open the seed Wikipedia page (`navbox_seed_url` in config).
 - Extract entities from the selected navboxes, resolve to Wikidata QIDs, and enrich
   with labels/descriptions/sitelinks/attribution properties.
 - Normalize output to the same schema as other harvesters.
@@ -14,6 +14,9 @@ Main purpose:
 Input:
 - --config: path to config JSON (must include `navbox_names`).
 - --start-url (optional): override seed page.
+  If omitted, `config.navbox_seed_url` must be provided.
+- Optional source-hint mapping:
+  - `harvest_hints.instance_of_map` in config.
 
 Output:
 - --output: JSONL file (recommended:
@@ -30,8 +33,19 @@ import argparse
 from collections import defaultdict
 from typing import Dict, List, Set
 
-import ru_ua_harvest_wikipedia_navboxes as core
-from pipeline_common import normalize_record, read_json, write_jsonl, merge_records_by_qid
+import wikipedia_common as wiki_common
+from pipeline_common import (
+    attribution_prop_ids_from_config,
+    binding_to_enriched_record,
+    build_item_enrichment_query,
+    config_languages,
+    merge_records_by_qid,
+    normalize_record,
+    read_json,
+    run_wikidata_sparql,
+    site_keys_for_langs,
+    write_jsonl,
+)
 
 
 def main() -> None:
@@ -50,26 +64,36 @@ def main() -> None:
     if not navbox_names:
         raise SystemExit("config.navbox_names is empty")
 
-    start_url = args.start_url or cfg.get("navbox_seed_url") or "https://en.wikipedia.org/wiki/Russo-Ukrainian_War"
+    start_url = args.start_url or cfg.get("navbox_seed_url")
+    if not isinstance(start_url, str) or not start_url.strip():
+        raise SystemExit("Missing seed page URL. Set config.navbox_seed_url or pass --start-url.")
+    start_url = start_url.strip()
+    langs = config_languages(cfg)
+    site_keys = site_keys_for_langs(langs)
+    attrib_prop_ids = attribution_prop_ids_from_config(cfg)
 
-    source_lang = core._lang_from_start_url(start_url)
-    source_api = core.wiki_api_for_lang(source_lang)
-    page_title = core.page_title_from_start_url(start_url)
+    hint_map = wiki_common.instance_hint_map_from_config(cfg)
+
+    source_lang, page_title = wiki_common.infer_source_lang_and_title_from_url(start_url)
+    if source_lang not in langs:
+        langs.append(source_lang)
+        site_keys = site_keys_for_langs(langs)
+    source_api = wiki_common.wiki_api_for_lang(source_lang)
     base = f"https://{source_lang}.wikipedia.org"
 
     print(f"[navboxes] Fetching seed page: {page_title} ({source_lang})")
-    html = core.fetch_rendered_html_via_parse(page_title, sleep=args.sleep, api_url=source_api)
-    soup = core.soup_from_html(html)
+    html = wiki_common.fetch_rendered_html_via_parse(page_title, sleep=args.sleep, api_url=source_api)
+    soup = wiki_common.soup_from_html(html)
 
     title_to_paths: Dict[str, Set[str]] = defaultdict(set)
     for navbox_title in navbox_names:
-        links = core.extract_links_from_one_navbox(
+        links = wiki_common.extract_links_from_one_navbox(
             soup=soup,
             base_url=base,
             navbox_title=navbox_title,
             navbox_index=args.navbox_index,
         )
-        titles = set(core.titles_from_urls(links))
+        titles = set(wiki_common.titles_from_urls(links))
         print(f"[navboxes] '{navbox_title}': titles={len(titles)}")
         for t in titles:
             title_to_paths[t].add(f"navbox:{navbox_title}")
@@ -78,11 +102,11 @@ def main() -> None:
         raise SystemExit("No titles collected from configured navboxes.")
 
     all_titles = sorted(title_to_paths.keys())
-    t2q = core.wikipedia_titles_to_qids(all_titles, lang=source_lang, sleep=args.sleep)
+    t2q = wiki_common.wikipedia_titles_to_qids(all_titles, lang=source_lang, sleep=args.sleep)
     print(f"[navboxes] resolved titles -> qids: {len(t2q)} / {len(all_titles)}")
 
     qid_to_paths: Dict[str, Set[str]] = defaultdict(set)
-    qid_to_titles_by_lang = {"en": defaultdict(set), "ru": defaultdict(set), "uk": defaultdict(set)}
+    qid_to_titles_by_lang: Dict[str, Dict[str, Set[str]]] = {lang: defaultdict(set) for lang in langs}
     qids: Set[str] = set()
 
     for t, q in t2q.items():
@@ -100,60 +124,22 @@ def main() -> None:
     batch_size = 120
     for i in range(0, len(qid_list), batch_size):
         batch = qid_list[i:i + batch_size]
-        query = core.build_sparql_for_qids(batch)
-        data = core.run_sparql(query)
+        query = build_item_enrichment_query(batch, langs, attrib_prop_ids=attrib_prop_ids)
+        data = run_wikidata_sparql(query)
 
         for b in data["results"]["bindings"]:
-            item_uri = b.get("item", {}).get("value")
-            qid = core.qid_from_uri(item_uri)
-            if not qid:
+            rec = binding_to_enriched_record(b, langs, attrib_prop_ids=attrib_prop_ids)
+            if not rec:
                 continue
 
-            insts = set(core.qid_from_uri(x) or x for x in core.split_concat(b.get("insts", {}).get("value")))
-
-            raw_attrib_qids = {}
-            for pid in core.ATTRIB_PROP_IDS:
-                vals = core.split_concat(b.get(f"{pid}_vals", {}).get("value"))
-                qset = set()
-                for v in vals:
-                    qq = core.qid_from_uri(v) if v.startswith("http") else v
-                    if qq:
-                        qset.add(qq)
-                raw_attrib_qids[pid] = sorted(qset)
-
-            rec = {
-                "qid": qid,
-                "uri": item_uri or f"http://www.wikidata.org/entity/{qid}",
-                "source": {
-                    "type": "wikipedia_navboxes",
-                    "page": start_url,
-                    "hint": core.infer_category_hint(insts),
-                    "collection_paths": sorted(qid_to_paths.get(qid, {"navbox"})),
-                    "navbox_names": navbox_names,
-                },
-                "labels": {
-                    "en": b.get("label_en", {}).get("value"),
-                    "uk": b.get("label_uk", {}).get("value"),
-                    "ru": b.get("label_ru", {}).get("value"),
-                },
-                "descriptions": {
-                    "en": b.get("desc_en", {}).get("value"),
-                    "uk": b.get("desc_uk", {}).get("value"),
-                    "ru": b.get("desc_ru", {}).get("value"),
-                },
-                "aliases": {"en": [], "uk": [], "ru": []},
-                "sitelinks": {
-                    "enwiki": b.get("enwiki", {}).get("value"),
-                    "ruwiki": b.get("ruwiki", {}).get("value"),
-                    "ukwiki": b.get("ukwiki", {}).get("value"),
-                },
-                "wiki_titles": {
-                    "en": b.get("en_title", {}).get("value"),
-                    "ru": b.get("ru_title", {}).get("value"),
-                    "uk": b.get("uk_title", {}).get("value"),
-                },
-                "instance_of": sorted(insts),
-                "raw_attrib_qids": raw_attrib_qids,
+            qid = rec["qid"]
+            insts = set(rec.get("instance_of") or [])
+            rec["source"] = {
+                "type": "wikipedia_navboxes",
+                "page": start_url,
+                "hint": wiki_common.infer_category_hint(insts, hint_map=hint_map),
+                "collection_paths": sorted(qid_to_paths.get(qid, {"navbox"})),
+                "navbox_names": navbox_names,
             }
 
             if qid_to_titles_by_lang[source_lang].get(qid):
@@ -163,11 +149,17 @@ def main() -> None:
 
     rows = []
     for qid in sorted(entities.keys()):
-        nr = normalize_record(entities[qid], source_type="wikipedia_navboxes")
+        nr = normalize_record(
+            entities[qid],
+            source_type="wikipedia_navboxes",
+            lang_keys=langs,
+            site_keys=site_keys,
+            attrib_prop_ids=attrib_prop_ids,
+        )
         if nr:
             rows.append(nr)
 
-    rows = merge_records_by_qid(rows)
+    rows = merge_records_by_qid(rows, lang_keys=langs, site_keys=site_keys, attrib_prop_ids=attrib_prop_ids)
     write_jsonl(args.output, rows)
     print(f"[navboxes] wrote {args.output} ({len(rows)} records)")
 

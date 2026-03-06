@@ -1,0 +1,104 @@
+{
+  "input_files": [
+    "/Users/yuanyu/Desktop/Russia Ukrain War/pipeline_v2/data/entities/categories_entities.jsonl",
+    "/Users/yuanyu/Desktop/Russia Ukrain War/pipeline_v2/data/entities/navboxes_entities.jsonl",
+    "/Users/yuanyu/Desktop/Russia Ukrain War/pipeline_v2/data/entities/wikidata_entities.jsonl"
+  ],
+  "loaded_rows": 4168,
+  "unique_qids": 4056,
+  "counts": {
+    "other": 1011,
+    "party1": 428,
+    "party2": 2495,
+    "mixed": 122
+  },
+  "party1_qids": [
+    "Q159",
+    "Q15925436",
+    "Q16150196",
+    "Q16746854",
+    "Q16912926"
+  ],
+  "party2_qids": [
+    "Q212"
+  ],
+  "languages_scanned": [
+    "en",
+    "ru",
+    "uk"
+  ],
+  "other_threshold": 4,
+  "attribution_properties": [
+    "P27",
+    "P17",
+    "P495",
+    "P159",
+    "P131",
+    "P276",
+    "P19",
+    "P740",
+    "P551"
+  ],
+  "place_country_resolution": {
+    "country_property": "P17",
+    "admin_property": "P131",
+    "max_admin_depth": 3,
+    "place_properties": [
+      "P159",
+      "P131",
+      "P276",
+      "P19",
+      "P740",
+      "P551"
+    ],
+    "direct_country_properties": [
+      "P17",
+      "P27",
+      "P495"
+    ],
+    "batch_size": 80,
+    "sleep_seconds": 0.2
+  },
+  "output_labels": {
+    "enabled": false,
+    "field_name": "country_attribution",
+    "label_map": {
+      "party1": "party1",
+      "party2": "party2",
+      "mixed": "mixed",
+      "other": "other"
+    }
+  },
+  "legacy_output": {
+    "enabled": false,
+    "field_name": "legacy_attribution",
+    "label_map": {
+      "party1": "party1",
+      "party2": "party2",
+      "mixed": "mixed",
+      "other": "other"
+    }
+  },
+  "report_label_lang": "en",
+  "other_country_top3": [
+    {
+      "qid": "Q183",
+      "label": "Germany",
+      "label_lang": "en",
+      "count": 31
+    },
+    {
+      "qid": "Q30",
+      "label": "United States",
+      "label_lang": "en",
+      "count": 26
+    },
+    {
+      "qid": "Q184",
+      "label": "Belarus",
+      "label_lang": "en",
+      "count": 15
+    }
+  ],
+  "other_country_unknown": 833
+}
