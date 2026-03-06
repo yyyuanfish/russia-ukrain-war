@@ -13,6 +13,15 @@ Main purpose:
 Input:
 - --config: path to config JSON (must include `category_names`).
 - Optional overrides: `--depth`, `--strategy`, and traversal limits.
+- Language control:
+  - `categories.source_lang`: language of `category_names`.
+  - `categories.langs`: target Wikipedia languages to crawl (e.g., `["en","ru","uk"]`).
+  - `categories.use_keyword_filter` (optional, default `true`): turn subcategory keyword filter on/off.
+  - `categories.keywords` (optional): global subcategory filter keywords.
+  - `categories.keywords_by_lang` (optional): per-language keywords (overrides `categories.keywords` per language).
+    If omitted, lightweight keywords are auto-derived per language from resolved root category titles.
+- Optional source-hint mapping:
+  - `harvest_hints.instance_of_map` in config.
 
 Output:
 - --output: JSONL file (recommended:
@@ -30,8 +39,20 @@ import argparse
 from collections import defaultdict
 from typing import Dict, List, Set
 
-import ru_ua_harvest_wikipedia_navboxes as core
-from pipeline_common import config_languages, normalize_record, read_json, write_json, write_jsonl, merge_records_by_qid
+import wikipedia_common as wiki_common
+from pipeline_common import (
+    attribution_prop_ids_from_config,
+    binding_to_enriched_record,
+    build_item_enrichment_query,
+    config_languages,
+    merge_records_by_qid,
+    normalize_record,
+    read_json,
+    run_wikidata_sparql,
+    site_keys_for_langs,
+    write_json,
+    write_jsonl,
+)
 
 
 def _category_title(name: str) -> str:
@@ -39,6 +60,36 @@ def _category_title(name: str) -> str:
     if ":" in n:
         return n
     return f"Category:{n}"
+
+
+def _auto_keywords(names: List[str]) -> List[str]:
+    """
+    Build lightweight keyword anchors from configured category names.
+    Used only when config does not provide explicit keywords.
+    """
+    out: List[str] = []
+    for name in names:
+        raw = name.replace("Category:", " ")
+        token = []
+        for ch in raw:
+            token.append(ch if ch.isalnum() else " ")
+        for t in "".join(token).split():
+            if len(t) < 4:
+                continue
+            tt = t.strip()
+            if tt and tt not in out:
+                out.append(tt)
+    return out
+
+
+def _keyword_list(raw) -> List[str]:
+    out: List[str] = []
+    if isinstance(raw, list):
+        for x in raw:
+            s = str(x).strip()
+            if s and s not in out:
+                out.append(s)
+    return out
 
 
 def main() -> None:
@@ -68,15 +119,25 @@ def main() -> None:
     if strategy not in {"bfs", "dfs"}:
         strategy = "bfs"
 
-    langs = config_languages(cfg)
+    langs_cfg = ccfg.get("langs")
+    if not isinstance(langs_cfg, list):
+        langs_cfg = ccfg.get("languages")
+
+    langs: List[str] = []
+    if isinstance(langs_cfg, list):
+        for x in langs_cfg:
+            if isinstance(x, str):
+                v = x.strip().lower()
+                if v and v not in langs:
+                    langs.append(v)
+    if not langs:
+        langs = config_languages(cfg)
+
     if source_lang not in langs:
         langs.append(source_lang)
-
-    kw_cfg = ccfg.get("keywords")
-    if isinstance(kw_cfg, list) and kw_cfg:
-        keywords = [str(x).strip() for x in kw_cfg if str(x).strip()]
-    else:
-        keywords = [k.strip() for k in core.DEFAULT_CATEGORY_KEYWORDS.split(",") if k.strip()]
+    site_keys = site_keys_for_langs(langs)
+    attrib_prop_ids = attribution_prop_ids_from_config(cfg)
+    hint_map = wiki_common.instance_hint_map_from_config(cfg)
 
     roots_by_lang: Dict[str, Set[str]] = defaultdict(set)
 
@@ -84,13 +145,34 @@ def main() -> None:
         src_title = _category_title(raw_name)
         roots_by_lang[source_lang].add(src_title)
 
-        langlinks = core.fetch_langlinks(src_title, source_lang=source_lang, sleep=args.sleep)
+        langlinks = wiki_common.fetch_langlinks(src_title, source_lang=source_lang, sleep=args.sleep)
         for lang in langs:
             if lang == source_lang:
                 continue
             t = langlinks.get(lang)
             if t:
                 roots_by_lang[lang].add(t)
+
+    use_keyword_filter = bool(ccfg.get("use_keyword_filter", True))
+    global_keywords = _keyword_list(ccfg.get("keywords"))
+    kw_by_lang_cfg = ccfg.get("keywords_by_lang") if isinstance(ccfg.get("keywords_by_lang"), dict) else {}
+    keywords_by_lang: Dict[str, List[str]] = {lang: [] for lang in langs}
+
+    if use_keyword_filter:
+        for lang in langs:
+            lang_keywords = _keyword_list(kw_by_lang_cfg.get(lang)) if kw_by_lang_cfg else []
+            if lang_keywords:
+                keywords_by_lang[lang] = lang_keywords
+                continue
+
+            if global_keywords:
+                keywords_by_lang[lang] = list(global_keywords)
+                continue
+
+            auto_source = sorted(roots_by_lang.get(lang, set()))
+            if not auto_source:
+                auto_source = category_names
+            keywords_by_lang[lang] = _auto_keywords(auto_source)
 
     titles_by_lang: Dict[str, Set[str]] = defaultdict(set)
     visited_categories_by_lang: Dict[str, Set[str]] = defaultdict(set)
@@ -101,14 +183,18 @@ def main() -> None:
             print(f"[categories] lang={lang}: no root categories found")
             continue
 
-        api_url = core.wiki_api_for_lang(lang)
-        print(f"[categories] lang={lang}: roots={len(roots)}")
+        lang_keywords = keywords_by_lang.get(lang, [])
+        api_url = wiki_common.wiki_api_for_lang(lang)
+        print(
+            f"[categories] lang={lang}: roots={len(roots)}, keyword_filter={'on' if use_keyword_filter else 'off'}, "
+            f"keywords={len(lang_keywords)}"
+        )
 
-        walked = core.walk_categories_collect_titles(
+        walked = wiki_common.walk_categories_collect_titles(
             root_categories=roots,
             depth=max(0, depth),
             strategy=strategy,
-            keywords=keywords,
+            keywords=lang_keywords,
             sleep=args.sleep,
             api_url=api_url,
             max_categories=max(0, args.max_categories),
@@ -127,13 +213,13 @@ def main() -> None:
         )
 
     qid_to_paths: Dict[str, Set[str]] = defaultdict(set)
-    qid_to_titles_by_lang = {"en": defaultdict(set), "ru": defaultdict(set), "uk": defaultdict(set)}
+    qid_to_titles_by_lang: Dict[str, Dict[str, Set[str]]] = {lang: defaultdict(set) for lang in langs}
     qids: Set[str] = set()
 
     for lang, tset in titles_by_lang.items():
         if not tset:
             continue
-        t2q = core.wikipedia_titles_to_qids(sorted(tset), lang=lang, sleep=args.sleep)
+        t2q = wiki_common.wikipedia_titles_to_qids(sorted(tset), lang=lang, sleep=args.sleep)
         print(f"[categories] {lang}: resolved titles -> qids: {len(t2q)} / {len(tset)}")
         for t, q in t2q.items():
             qids.add(q)
@@ -147,62 +233,25 @@ def main() -> None:
 
     for i in range(0, len(qid_list), batch_size):
         batch = qid_list[i:i + batch_size]
-        query = core.build_sparql_for_qids(batch)
-        data = core.run_sparql(query)
+        query = build_item_enrichment_query(batch, langs, attrib_prop_ids=attrib_prop_ids)
+        data = run_wikidata_sparql(query)
 
         for b in data["results"]["bindings"]:
-            item_uri = b.get("item", {}).get("value")
-            qid = core.qid_from_uri(item_uri)
-            if not qid:
+            rec = binding_to_enriched_record(b, langs, attrib_prop_ids=attrib_prop_ids)
+            if not rec:
                 continue
 
-            insts = set(core.qid_from_uri(x) or x for x in core.split_concat(b.get("insts", {}).get("value")))
-            raw_attrib_qids = {}
-            for pid in core.ATTRIB_PROP_IDS:
-                vals = core.split_concat(b.get(f"{pid}_vals", {}).get("value"))
-                qset = set()
-                for v in vals:
-                    qq = core.qid_from_uri(v) if v.startswith("http") else v
-                    if qq:
-                        qset.add(qq)
-                raw_attrib_qids[pid] = sorted(qset)
-
-            rec = {
-                "qid": qid,
-                "uri": item_uri or f"http://www.wikidata.org/entity/{qid}",
-                "source": {
-                    "type": "wikipedia_categories",
-                    "page": f"https://{source_lang}.wikipedia.org/wiki/{_category_title(category_names[0]).replace(' ', '_')}",
-                    "hint": core.infer_category_hint(insts),
-                    "collection_paths": sorted(qid_to_paths.get(qid, {"category"})),
-                    "category_names": category_names,
-                },
-                "labels": {
-                    "en": b.get("label_en", {}).get("value"),
-                    "uk": b.get("label_uk", {}).get("value"),
-                    "ru": b.get("label_ru", {}).get("value"),
-                },
-                "descriptions": {
-                    "en": b.get("desc_en", {}).get("value"),
-                    "uk": b.get("desc_uk", {}).get("value"),
-                    "ru": b.get("desc_ru", {}).get("value"),
-                },
-                "aliases": {"en": [], "uk": [], "ru": []},
-                "sitelinks": {
-                    "enwiki": b.get("enwiki", {}).get("value"),
-                    "ruwiki": b.get("ruwiki", {}).get("value"),
-                    "ukwiki": b.get("ukwiki", {}).get("value"),
-                },
-                "wiki_titles": {
-                    "en": b.get("en_title", {}).get("value"),
-                    "ru": b.get("ru_title", {}).get("value"),
-                    "uk": b.get("uk_title", {}).get("value"),
-                },
-                "instance_of": sorted(insts),
-                "raw_attrib_qids": raw_attrib_qids,
+            qid = rec["qid"]
+            insts = set(rec.get("instance_of") or [])
+            rec["source"] = {
+                "type": "wikipedia_categories",
+                "page": f"https://{source_lang}.wikipedia.org/wiki/{_category_title(category_names[0]).replace(' ', '_')}",
+                "hint": wiki_common.infer_category_hint(insts, hint_map=hint_map),
+                "collection_paths": sorted(qid_to_paths.get(qid, {"category"})),
+                "category_names": category_names,
             }
 
-            for lang in ("en", "ru", "uk"):
+            for lang in langs:
                 tset = qid_to_titles_by_lang.get(lang, {}).get(qid, set())
                 if tset:
                     rec["wiki_titles"][lang] = sorted(tset)[0]
@@ -211,11 +260,17 @@ def main() -> None:
 
     rows = []
     for qid in sorted(entities.keys()):
-        nr = normalize_record(entities[qid], source_type="wikipedia_categories")
+        nr = normalize_record(
+            entities[qid],
+            source_type="wikipedia_categories",
+            lang_keys=langs,
+            site_keys=site_keys,
+            attrib_prop_ids=attrib_prop_ids,
+        )
         if nr:
             rows.append(nr)
 
-    rows = merge_records_by_qid(rows)
+    rows = merge_records_by_qid(rows, lang_keys=langs, site_keys=site_keys, attrib_prop_ids=attrib_prop_ids)
     write_jsonl(args.output, rows)
     print(f"[categories] wrote {args.output} ({len(rows)} records)")
 
@@ -224,6 +279,9 @@ def main() -> None:
             "category_names": category_names,
             "source_lang": source_lang,
             "target_languages": langs,
+            "use_keyword_filter": use_keyword_filter,
+            "keywords_global": global_keywords,
+            "keywords_by_lang": keywords_by_lang,
             "strategy": strategy,
             "depth": depth,
             "visited_categories_by_lang": {k: len(v) for k, v in visited_categories_by_lang.items()},

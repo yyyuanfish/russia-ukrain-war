@@ -5,18 +5,32 @@
 Script: harvest_wikidata.py
 
 Main purpose:
-- Harvest conflict-related entities directly from Wikidata using SPARQL buckets
-  (people, events, organizations, policies, media narratives).
-- Normalize every record into the shared JSONL schema used by the whole pipeline.
-- Produce the Wikidata entity source file for downstream attribution.
+- Harvest conflict-related entities from Wikidata in a config-driven way.
+- Discover conflict seed QIDs from config (and optionally from `navbox_seed_url`).
+- Expand entities via generic buckets (people/events/organizations/policies/media narratives/related).
+- Normalize records into the shared JSONL schema used by the whole pipeline.
 
 Input:
-- --config: path to config JSON (uses optional `wikidata` section:
-  `limit`, `no_aliases`, `ensure_qids`).
+- --config: path to config JSON (uses optional `wikidata` section):
+  - `seed_qids`: explicit conflict seed QIDs (recommended)
+  - `seed_from_navbox_page`: if true, also resolve QID from `navbox_seed_url`
+  - `limit`: optional per-bucket query limit
+  - `no_aliases`: skip alias enrichment
+  - `ensure_qids`: additional QIDs to always include
+  - `type_anchors`: optional QID anchors used by generic bucket queries
+  - `relation_properties`: optional relation property IDs used by bucket queries
+  - `bucket_queries`: optional full custom WHERE blocks by bucket name
+  - `aliases` (optional):
+    - `enabled`: enable/disable alias enrichment (default true)
+    - `max_total_per_qid`: cap total aliases per QID across all languages (0 means unlimited)
+    - `max_per_lang`: cap aliases per language per QID (0 means unlimited)
+- Alias language control:
+  - `languages.all` in config.
+- Source hint control:
+  - `harvest_hints.instance_of_map` in config (optional).
 
 Output:
-- --output: JSONL file (recommended:
-  `data/entities/wikidata_entities.jsonl`).
+- --output: JSONL file (recommended: `data/entities/wikidata_entities.jsonl`).
 - --array: optional pretty JSON array dump of the same records.
 
 How to run:
@@ -28,10 +42,53 @@ Pipeline step:
 
 import argparse
 import json
-from typing import List, Optional, Set
+from collections import defaultdict
+from typing import Dict, List, Optional, Set
 
-import ru_ua_harvest_wikidata_entities as core
-from pipeline_common import normalize_record, read_json, write_jsonl, ensure_parent
+import wikipedia_common as wiki_common
+from pipeline_common import (
+    attribution_prop_ids_from_config,
+    binding_to_enriched_record,
+    build_item_enrichment_query,
+    config_languages,
+    merge_records_by_qid,
+    normalize_record,
+    read_json,
+    run_wikidata_sparql,
+    site_keys_for_langs,
+    write_jsonl,
+    ensure_parent,
+)
+
+PREFIXES = """
+PREFIX wd: <http://www.wikidata.org/entity/>
+PREFIX wdt: <http://www.wikidata.org/prop/direct/>
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+"""
+
+DEFAULT_TYPE_ANCHORS = {
+    "human": "Q5",
+    "battle": "Q178561",
+    "military_conflict": "Q180684",
+    "attack": "Q645883",
+    "mass_killing": "Q167442",
+    "military_unit": "Q176799",
+    "government": "Q7188",
+    "organization": "Q43229",
+    "law": "Q820655",
+    "public_policy": "Q7163",
+    "economic_sanction": "Q618779",
+    "resolution": "Q182994",
+    "conspiracy_theory": "Q17379835",
+    "propaganda": "Q215080",
+}
+
+DEFAULT_RELATION_PROPERTIES = {
+    "part_of": "P361",
+    "conflict_participant": "P607",
+    "participant_in": "P1344",
+    "main_subject": "P921",
+}
 
 
 def _parse_optional_int(x) -> Optional[int]:
@@ -44,49 +101,388 @@ def _parse_optional_int(x) -> Optional[int]:
         return None
 
 
-def harvest(limit: Optional[int], no_aliases: bool, extra_ensure_qids: Set[str]) -> List[dict]:
-    rows: List[dict] = []
+def _parse_nonnegative_int(x, default: int = 0) -> int:
+    try:
+        v = int(x)
+        return v if v >= 0 else default
+    except Exception:
+        return default
 
-    print("[wikidata] Querying people...")
-    people = core.query_people(limit=limit)
-    rows += core.bindings_to_records(people["results"]["bindings"], "person")
 
-    print("[wikidata] Querying events...")
-    events = core.query_events(limit=limit)
-    rows += core.bindings_to_records(events["results"]["bindings"], "event")
+def _resolve_alias_config(wcfg: dict) -> dict:
+    acfg = wcfg.get("aliases") if isinstance(wcfg.get("aliases"), dict) else {}
+    return {
+        "enabled": bool(acfg.get("enabled", True)),
+        "max_total_per_qid": _parse_nonnegative_int(acfg.get("max_total_per_qid"), default=0),
+        "max_per_lang": _parse_nonnegative_int(acfg.get("max_per_lang"), default=0),
+    }
 
-    print("[wikidata] Querying organizations...")
-    orgs = core.query_orgs(limit=limit)
-    rows += core.bindings_to_records(orgs["results"]["bindings"], "organization")
 
-    print("[wikidata] Querying policies...")
-    policies = core.query_policies(limit=limit)
-    rows += core.bindings_to_records(policies["results"]["bindings"], "policy")
+def _normalize_qids(vals) -> List[str]:
+    out: List[str] = []
+    if not isinstance(vals, list):
+        return out
+    seen = set()
+    for v in vals:
+        if not (isinstance(v, str) and v.startswith("Q")):
+            continue
+        if v in seen:
+            continue
+        seen.add(v)
+        out.append(v)
+    return out
 
-    print("[wikidata] Querying media narratives...")
-    narratives = core.query_media_narratives(limit=limit)
-    rows += core.bindings_to_records(narratives["results"]["bindings"], "media_narrative")
 
-    rows = core.dedupe_by_qid(rows)
+def _normalize_type_anchors(raw: dict) -> Dict[str, str]:
+    out = dict(DEFAULT_TYPE_ANCHORS)
+    if not isinstance(raw, dict):
+        return out
+    for k, v in raw.items():
+        if not isinstance(k, str):
+            continue
+        key = k.strip().lower()
+        if not key:
+            continue
+        if isinstance(v, str) and v.startswith("Q"):
+            out[key] = v.strip()
+    return out
 
-    ensure_qids = set(core.ENSURE_QIDS) | set(extra_ensure_qids)
-    present = {r.get("qid") for r in rows if isinstance(r.get("qid"), str)}
-    missing = sorted(q for q in ensure_qids if q not in present)
-    if missing:
-        print(f"[wikidata] Ensuring QIDs (missing -> add): {missing}")
-        extra = core.query_by_qids(missing, limit=None)
-        rows += core.bindings_to_records(extra["results"]["bindings"], "organization")
-        rows = core.dedupe_by_qid(rows)
 
-    if not no_aliases:
-        print("[wikidata] Enriching aliases...")
-        core.enrich_aliases(rows, langs=("en", "ru", "uk"))
+def _normalize_relation_properties(raw: dict) -> Dict[str, str]:
+    out = dict(DEFAULT_RELATION_PROPERTIES)
+    if not isinstance(raw, dict):
+        return out
+    for k, v in raw.items():
+        if not isinstance(k, str):
+            continue
+        key = k.strip().lower()
+        if not key:
+            continue
+        if isinstance(v, str) and v.strip().upper().startswith("P"):
+            out[key] = v.strip().upper()
+    return out
+
+
+def _resolve_seed_qids(config: dict, sleep: float = 0.25) -> List[str]:
+    wcfg = config.get("wikidata") if isinstance(config.get("wikidata"), dict) else {}
+    seeds: List[str] = []
+    seen = set()
+
+    for q in _normalize_qids(wcfg.get("seed_qids") or []):
+        if q not in seen:
+            seen.add(q)
+            seeds.append(q)
+
+    use_navbox_seed = bool(wcfg.get("seed_from_navbox_page", True))
+    if use_navbox_seed:
+        start_url = config.get("navbox_seed_url")
+        if isinstance(start_url, str) and start_url.strip():
+            start_url = start_url.strip()
+            seed_lang, seed_title = wiki_common.infer_source_lang_and_title_from_url(start_url)
+            t2q = wiki_common.wikipedia_titles_to_qids([seed_title], lang=seed_lang, sleep=sleep)
+            for q in t2q.values():
+                if isinstance(q, str) and q.startswith("Q") and q not in seen:
+                    seen.add(q)
+                    seeds.append(q)
+
+    return seeds
+
+
+def _query_qids(where_block: str, limit: Optional[int] = None) -> List[str]:
+    query = PREFIXES + f"""
+SELECT DISTINCT ?item WHERE {{
+{where_block}
+}}
+"""
+    if isinstance(limit, int) and limit > 0:
+        query += f"\nLIMIT {limit}"
+
+    data = run_wikidata_sparql(query)
+    out: List[str] = []
+    seen = set()
+    for b in data.get("results", {}).get("bindings", []):
+        uri = b.get("item", {}).get("value")
+        if not isinstance(uri, str) or "/Q" not in uri:
+            continue
+        qid = uri.rsplit("/", 1)[-1]
+        if qid.startswith("Q") and qid not in seen:
+            seen.add(qid)
+            out.append(qid)
+    return out
+
+
+def _bucket_queries(seed_qids: List[str], type_anchors: Dict[str, str], rel_props: Dict[str, str]) -> Dict[str, str]:
+    seed_values = " ".join(f"wd:{q}" for q in seed_qids)
+    p_part_of = rel_props["part_of"]
+    p_conflict_participant = rel_props["conflict_participant"]
+    p_participant_in = rel_props["participant_in"]
+    p_main_subject = rel_props["main_subject"]
+
+    return {
+        "person": f"""
+  VALUES ?seed {{ {seed_values} }}
+  ?item wdt:P31 wd:{type_anchors["human"]} .
+  ?item wdt:{p_conflict_participant} ?seed .
+""",
+        "event": f"""
+  VALUES ?seed {{ {seed_values} }}
+  VALUES ?etype {{ wd:{type_anchors["battle"]} wd:{type_anchors["military_conflict"]} wd:{type_anchors["attack"]} wd:{type_anchors["mass_killing"]} }}
+  ?item wdt:P31/wdt:P279* ?etype .
+  {{ ?item wdt:{p_part_of} ?seed }} UNION {{ ?item wdt:{p_conflict_participant} ?seed }} UNION {{ ?item wdt:{p_participant_in} ?seed }}
+""",
+        "organization": f"""
+  VALUES ?seed {{ {seed_values} }}
+  VALUES ?otype {{ wd:{type_anchors["military_unit"]} wd:{type_anchors["organization"]} wd:{type_anchors["government"]} }}
+  ?item wdt:P31/wdt:P279* ?otype .
+  {{ ?item wdt:{p_conflict_participant} ?seed }} UNION {{ ?item wdt:{p_participant_in} ?seed }}
+""",
+        "policy": f"""
+  VALUES ?seed {{ {seed_values} }}
+  VALUES ?ptype {{ wd:{type_anchors["law"]} wd:{type_anchors["public_policy"]} wd:{type_anchors["economic_sanction"]} wd:{type_anchors["resolution"]} }}
+  ?item wdt:P31/wdt:P279* ?ptype .
+  ?item wdt:{p_main_subject} ?seed .
+""",
+        "media_narrative": f"""
+  VALUES ?seed {{ {seed_values} }}
+  VALUES ?ntype {{ wd:{type_anchors["conspiracy_theory"]} wd:{type_anchors["propaganda"]} }}
+  ?item wdt:P31/wdt:P279* ?ntype .
+  ?item wdt:{p_main_subject} ?seed .
+""",
+        "related": f"""
+  VALUES ?seed {{ {seed_values} }}
+  {{ ?item wdt:{p_part_of} ?seed }} UNION
+  {{ ?item wdt:{p_conflict_participant} ?seed }} UNION
+  {{ ?item wdt:{p_participant_in} ?seed }} UNION
+  {{ ?item wdt:{p_main_subject} ?seed }}
+""",
+    }
+
+
+def _resolve_bucket_queries(
+    seed_qids: List[str],
+    wcfg: dict,
+    type_anchors: Dict[str, str],
+    rel_props: Dict[str, str],
+) -> Dict[str, str]:
+    seed_values = " ".join(f"wd:{q}" for q in seed_qids)
+    custom = wcfg.get("bucket_queries") if isinstance(wcfg.get("bucket_queries"), dict) else {}
+    out: Dict[str, str] = {}
+    for name, where_block in custom.items():
+        if not (isinstance(name, str) and name.strip() and isinstance(where_block, str) and where_block.strip()):
+            continue
+        out[name.strip()] = where_block.replace("{seed_values}", seed_values).strip()
+
+    if out:
+        return out
+
+    return _bucket_queries(seed_qids, type_anchors=type_anchors, rel_props=rel_props)
+
+
+def _collect_qids(
+    seed_qids: List[str],
+    limit: Optional[int],
+    wcfg: dict,
+    type_anchors: Dict[str, str],
+    rel_props: Dict[str, str],
+) -> Dict[str, Set[str]]:
+    qid_to_paths: Dict[str, Set[str]] = defaultdict(set)
+
+    for q in seed_qids:
+        qid_to_paths[q].add("wikidata_seed")
+
+    bucket_map = _resolve_bucket_queries(seed_qids, wcfg=wcfg, type_anchors=type_anchors, rel_props=rel_props)
+    for bucket, where_block in bucket_map.items():
+        print(f"[wikidata] Querying {bucket}...")
+        qids = _query_qids(where_block, limit=limit)
+        for q in qids:
+            qid_to_paths[q].add(f"wikidata:{bucket}")
+
+    return qid_to_paths
+
+
+def _dedupe_preserve_order(items: List[str]) -> List[str]:
+    seen = set()
+    out: List[str] = []
+    for it in items:
+        if it in seen:
+            continue
+        seen.add(it)
+        out.append(it)
+    return out
+
+
+def _cap_aliases_per_qid(
+    by_lang: Dict[str, List[str]],
+    langs: List[str],
+    max_total_per_qid: int,
+) -> Dict[str, List[str]]:
+    if max_total_per_qid <= 0:
+        return by_lang
+
+    capped: Dict[str, List[str]] = {lang: [] for lang in langs}
+    idx: Dict[str, int] = {lang: 0 for lang in langs}
+    total = 0
+
+    while total < max_total_per_qid:
+        moved = False
+        for lang in langs:
+            vals = by_lang.get(lang, [])
+            i = idx[lang]
+            if i >= len(vals):
+                continue
+            capped[lang].append(vals[i])
+            idx[lang] = i + 1
+            total += 1
+            moved = True
+            if total >= max_total_per_qid:
+                break
+        if not moved:
+            break
+
+    return capped
+
+
+def _collect_aliases(
+    qid: str,
+    langs: List[str],
+    max_total_per_qid: int = 0,
+    max_per_lang: int = 0,
+) -> Dict[str, List[str]]:
+    if not (isinstance(qid, str) and qid.startswith("Q")):
+        return {l: [] for l in langs}
+
+    filter_langs = ",".join(f'"{l}"' for l in langs)
+    limit_clause = f"\nLIMIT {max_total_per_qid}" if max_total_per_qid > 0 else ""
+    query = PREFIXES + f"""
+SELECT ?alias ?lang WHERE {{
+  VALUES ?item {{ wd:{qid} }}
+  ?item skos:altLabel ?alias .
+  BIND(LANG(?alias) AS ?lang)
+  FILTER(?lang IN ({filter_langs}))
+}}
+{limit_clause}
+"""
+    out: Dict[str, List[str]] = {l: [] for l in langs}
+    try:
+        data = run_wikidata_sparql(query)
+    except Exception:
+        return out
+
+    for b in data.get("results", {}).get("bindings", []):
+        alias = b.get("alias", {}).get("value")
+        lang = b.get("lang", {}).get("value")
+        if isinstance(lang, str) and isinstance(alias, str) and lang in out:
+            out[lang].append(alias)
+
+    for lang in langs:
+        vals = _dedupe_preserve_order(out[lang])
+        if max_per_lang > 0:
+            vals = vals[:max_per_lang]
+        out[lang] = vals
+
+    return _cap_aliases_per_qid(out, langs, max_total_per_qid=max_total_per_qid)
+
+
+def _enrich_aliases(
+    records: List[dict],
+    langs: List[str],
+    max_total_per_qid: int = 0,
+    max_per_lang: int = 0,
+) -> None:
+    for i, rec in enumerate(records, 1):
+        rec["aliases"] = _collect_aliases(
+            rec["qid"],
+            langs,
+            max_total_per_qid=max_total_per_qid,
+            max_per_lang=max_per_lang,
+        )
+        if i % 25 == 0:
+            # gentle pacing
+            import time
+            time.sleep(0.2)
+
+
+def harvest(config: dict, limit: Optional[int], no_aliases: bool, extra_ensure_qids: Set[str]) -> List[dict]:
+    wcfg = config.get("wikidata") if isinstance(config.get("wikidata"), dict) else {}
+    langs = config_languages(config)
+    site_keys = site_keys_for_langs(langs)
+    attrib_prop_ids = attribution_prop_ids_from_config(config)
+    hint_map = wiki_common.instance_hint_map_from_config(config)
+    type_anchors = _normalize_type_anchors(wcfg.get("type_anchors"))
+    rel_props = _normalize_relation_properties(wcfg.get("relation_properties"))
+    alias_cfg = _resolve_alias_config(wcfg)
+
+    seed_qids = _resolve_seed_qids(config)
+    if not seed_qids:
+        raise SystemExit(
+            "No Wikidata seeds found. Set wikidata.seed_qids or provide navbox_seed_url + wikidata.seed_from_navbox_page=true."
+        )
+    print(f"[wikidata] seed_qids={seed_qids}")
+
+    qid_to_paths = _collect_qids(
+        seed_qids,
+        limit=limit,
+        wcfg=wcfg,
+        type_anchors=type_anchors,
+        rel_props=rel_props,
+    )
+
+    for q in sorted(extra_ensure_qids):
+        qid_to_paths[q].add("ensure_qid")
+
+    qids = sorted(qid_to_paths.keys())
+    entities: Dict[str, dict] = {}
+
+    batch_size = 120
+    for i in range(0, len(qids), batch_size):
+        batch = qids[i:i + batch_size]
+        query = build_item_enrichment_query(batch, langs, attrib_prop_ids=attrib_prop_ids)
+        data = run_wikidata_sparql(query)
+
+        for b in data.get("results", {}).get("bindings", []):
+            rec = binding_to_enriched_record(b, langs, attrib_prop_ids=attrib_prop_ids)
+            if not rec:
+                continue
+
+            qid = rec["qid"]
+            insts = set(rec.get("instance_of") or [])
+            rec["source"] = {
+                "type": "wikidata_sparql",
+                "page": "https://query.wikidata.org/sparql",
+                "hint": wiki_common.infer_category_hint(insts, hint_map=hint_map),
+                "collection_paths": sorted(qid_to_paths.get(qid, {"wikidata"})),
+                "seed_qids": seed_qids,
+            }
+            entities[qid] = rec
+
+    rows = [entities[q] for q in sorted(entities.keys())]
+
+    if not no_aliases and alias_cfg.get("enabled", True):
+        print(
+            "[wikidata] Enriching aliases... "
+            f"(max_total_per_qid={alias_cfg['max_total_per_qid']}, max_per_lang={alias_cfg['max_per_lang']})"
+        )
+        _enrich_aliases(
+            rows,
+            langs,
+            max_total_per_qid=alias_cfg["max_total_per_qid"],
+            max_per_lang=alias_cfg["max_per_lang"],
+        )
 
     out: List[dict] = []
     for r in rows:
-        nr = normalize_record(r, source_type="wikidata_sparql", collection_paths=["wikidata"]) 
+        nr = normalize_record(
+            r,
+            source_type="wikidata_sparql",
+            collection_paths=(r.get("source", {}).get("collection_paths") or ["wikidata"]),
+            lang_keys=langs,
+            site_keys=site_keys,
+            attrib_prop_ids=attrib_prop_ids,
+        )
         if nr:
             out.append(nr)
+
+    out = merge_records_by_qid(out, lang_keys=langs, site_keys=site_keys, attrib_prop_ids=attrib_prop_ids)
     return out
 
 
@@ -95,7 +491,7 @@ def main() -> None:
     ap.add_argument("--config", required=True, help="Path to config.json")
     ap.add_argument("--output", required=True, help="Output JSONL path")
     ap.add_argument("--array", default=None, help="Optional output JSON array path")
-    ap.add_argument("--limit", type=int, default=None, help="Optional per-query LIMIT override")
+    ap.add_argument("--limit", type=int, default=None, help="Optional per-bucket LIMIT override")
     ap.add_argument("--no-aliases", action="store_true", help="Skip alias enrichment")
     args = ap.parse_args()
 
@@ -105,12 +501,14 @@ def main() -> None:
     limit = args.limit if args.limit is not None else _parse_optional_int(wcfg.get("limit"))
     no_aliases = bool(args.no_aliases or wcfg.get("no_aliases", False))
 
-    extra_ensure_qids: Set[str] = set()
-    for q in (wcfg.get("ensure_qids") or []):
-        if isinstance(q, str) and q.startswith("Q"):
-            extra_ensure_qids.add(q)
+    extra_ensure_qids: Set[str] = set(_normalize_qids(wcfg.get("ensure_qids") or []))
 
-    rows = harvest(limit=limit, no_aliases=no_aliases, extra_ensure_qids=extra_ensure_qids)
+    rows = harvest(
+        config=config,
+        limit=limit,
+        no_aliases=no_aliases,
+        extra_ensure_qids=extra_ensure_qids,
+    )
 
     write_jsonl(args.output, rows)
     print(f"[wikidata] wrote {args.output} ({len(rows)} records)")

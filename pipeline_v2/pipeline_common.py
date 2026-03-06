@@ -20,12 +20,74 @@ It is imported by:
 
 import json
 import os
+import re
+import time
 from collections import defaultdict
 from typing import Dict, List, Optional, Set, Tuple
 
 ATTRIB_PROP_IDS = ["P27", "P17", "P495", "P159", "P131", "P276", "P19", "P740", "P551"]
-LANG_KEYS = ("en", "ru", "uk")
-SITE_KEYS = ("enwiki", "ruwiki", "ukwiki")
+DEFAULT_LANG_KEYS = ("en",)
+DEFAULT_SITE_KEYS = ("enwiki",)
+WIKIDATA_SPARQL = "https://query.wikidata.org/sparql"
+WIKIDATA_USER_AGENT = "conflict-pipeline/1.0 (config-driven research)"
+
+
+def normalize_langs(langs: Optional[List[str]]) -> List[str]:
+    out: List[str] = []
+    if not isinstance(langs, list):
+        return out
+    for v in langs:
+        if not isinstance(v, str):
+            continue
+        vv = v.strip().lower()
+        if vv and vv not in out:
+            out.append(vv)
+    return out
+
+
+def site_keys_for_langs(langs: List[str]) -> List[str]:
+    return [f"{l}wiki" for l in langs]
+
+
+def _safe_lang_var(lang: str) -> str:
+    return "".join(ch if ch.isalnum() else "_" for ch in lang.lower())
+
+
+def normalize_prop_ids(prop_ids: Optional[List[str]], default: Optional[List[str]] = None) -> List[str]:
+    out: List[str] = []
+    seen: Set[str] = set()
+    vals = prop_ids if isinstance(prop_ids, list) else []
+    for v in vals:
+        if not isinstance(v, str):
+            continue
+        p = v.strip().upper()
+        if not re.fullmatch(r"P\d+", p):
+            continue
+        if p in seen:
+            continue
+        seen.add(p)
+        out.append(p)
+
+    if out:
+        return out
+
+    dvals = default if isinstance(default, list) else []
+    for v in dvals:
+        if not isinstance(v, str):
+            continue
+        p = v.strip().upper()
+        if not re.fullmatch(r"P\d+", p):
+            continue
+        if p in seen:
+            continue
+        seen.add(p)
+        out.append(p)
+    return out
+
+
+def attribution_prop_ids_from_config(config: dict) -> List[str]:
+    ccfg = config.get("classification") if isinstance(config.get("classification"), dict) else {}
+    return normalize_prop_ids(ccfg.get("attribution_properties"), default=ATTRIB_PROP_IDS)
 
 
 def ensure_parent(path: str) -> None:
@@ -77,10 +139,10 @@ def _norm_lang_dict(d: Optional[dict], keys: Tuple[str, ...]) -> Dict[str, Optio
     return out
 
 
-def _norm_aliases(d: Optional[dict]) -> Dict[str, List[str]]:
-    out: Dict[str, List[str]] = {k: [] for k in LANG_KEYS}
+def _norm_aliases(d: Optional[dict], lang_keys: Tuple[str, ...]) -> Dict[str, List[str]]:
+    out: Dict[str, List[str]] = {k: [] for k in lang_keys}
     if isinstance(d, dict):
-        for k in LANG_KEYS:
+        for k in lang_keys:
             vals = d.get(k)
             if isinstance(vals, list):
                 cleaned = [str(x) for x in vals if isinstance(x, str) and x.strip()]
@@ -106,6 +168,9 @@ def normalize_record(
     source_hint: Optional[str] = None,
     source_page: Optional[str] = None,
     collection_paths: Optional[List[str]] = None,
+    lang_keys: Optional[List[str]] = None,
+    site_keys: Optional[List[str]] = None,
+    attrib_prop_ids: Optional[List[str]] = None,
 ) -> Optional[dict]:
     qid = rec.get("qid")
     if not isinstance(qid, str) or not qid.startswith("Q"):
@@ -138,31 +203,43 @@ def normalize_record(
     if cp_set:
         source["collection_paths"] = sorted(cp_set)
 
+    lk = tuple(normalize_langs(lang_keys) or list(DEFAULT_LANG_KEYS))
+    sk = tuple(site_keys or site_keys_for_langs(list(lk)))
+
     out = {
         "qid": qid,
         "uri": rec.get("uri") if isinstance(rec.get("uri"), str) else f"http://www.wikidata.org/entity/{qid}",
         "source": source,
-        "labels": _norm_lang_dict(rec.get("labels"), LANG_KEYS),
-        "descriptions": _norm_lang_dict(rec.get("descriptions"), LANG_KEYS),
-        "aliases": _norm_aliases(rec.get("aliases")),
-        "sitelinks": _norm_lang_dict(rec.get("sitelinks"), SITE_KEYS),
-        "wiki_titles": _norm_lang_dict(rec.get("wiki_titles"), LANG_KEYS),
+        "labels": _norm_lang_dict(rec.get("labels"), lk),
+        "descriptions": _norm_lang_dict(rec.get("descriptions"), lk),
+        "aliases": _norm_aliases(rec.get("aliases"), lk),
+        "sitelinks": _norm_lang_dict(rec.get("sitelinks"), sk),
+        "wiki_titles": _norm_lang_dict(rec.get("wiki_titles"), lk),
         "instance_of": _norm_qid_list(rec.get("instance_of") or []),
         "raw_attrib_qids": {},
     }
 
+    apids = normalize_prop_ids(attrib_prop_ids, default=ATTRIB_PROP_IDS)
     raw = rec.get("raw_attrib_qids") if isinstance(rec.get("raw_attrib_qids"), dict) else {}
-    for pid in ATTRIB_PROP_IDS:
+    for pid in apids:
         out["raw_attrib_qids"][pid] = _norm_qid_list(raw.get(pid) or [])
 
     return out
 
 
-def merge_records_by_qid(records: List[dict]) -> List[dict]:
+def merge_records_by_qid(
+    records: List[dict],
+    lang_keys: Optional[List[str]] = None,
+    site_keys: Optional[List[str]] = None,
+    attrib_prop_ids: Optional[List[str]] = None,
+) -> List[dict]:
     merged: Dict[str, dict] = {}
+    lk = normalize_langs(lang_keys) or list(DEFAULT_LANG_KEYS)
+    sk = site_keys or site_keys_for_langs(lk)
+    apids = normalize_prop_ids(attrib_prop_ids, default=ATTRIB_PROP_IDS)
 
     for r in records:
-        nr = normalize_record(r)
+        nr = normalize_record(r, lang_keys=lk, site_keys=sk, attrib_prop_ids=apids)
         if not nr:
             continue
         qid = nr["qid"]
@@ -181,14 +258,14 @@ def merge_records_by_qid(records: List[dict]) -> List[dict]:
                 if not cur[field].get(k) and v:
                     cur[field][k] = v
 
-        for lang in LANG_KEYS:
+        for lang in lk:
             cur_alias = set(cur.get("aliases", {}).get(lang) or [])
             new_alias = set(nr.get("aliases", {}).get(lang) or [])
             cur["aliases"][lang] = sorted(cur_alias | new_alias)
 
         cur["instance_of"] = sorted(set(cur.get("instance_of") or []) | set(nr.get("instance_of") or []))
 
-        for pid in ATTRIB_PROP_IDS:
+        for pid in apids:
             cur_set = set((cur.get("raw_attrib_qids") or {}).get(pid) or [])
             new_set = set((nr.get("raw_attrib_qids") or {}).get(pid) or [])
             cur["raw_attrib_qids"][pid] = sorted(cur_set | new_set)
@@ -207,14 +284,177 @@ def merge_records_by_qid(records: List[dict]) -> List[dict]:
 def config_languages(config: dict) -> List[str]:
     langs: List[str] = []
     lang_map = config.get("languages") if isinstance(config.get("languages"), dict) else {}
-    for _, v in lang_map.items():
-        if isinstance(v, str):
-            vv = v.strip().lower()
-            if vv and vv not in langs:
-                langs.append(vv)
-    if "en" not in langs:
-        langs.append("en")
+
+    def _add_lang(v: str) -> None:
+        vv = v.strip().lower()
+        if vv and vv not in langs:
+            langs.append(vv)
+
+    all_langs = lang_map.get("all")
+    if isinstance(all_langs, list):
+        for v in all_langs:
+            if isinstance(v, str):
+                _add_lang(v)
+
+    if not langs:
+        for _, v in lang_map.items():
+            if isinstance(v, str):
+                _add_lang(v)
+
+    if not langs:
+        langs = ["en"]
     return langs
+
+
+def run_wikidata_sparql(query: str, retries: int = 3, backoff: float = 2.0) -> dict:
+    try:
+        from SPARQLWrapper import JSON as SPARQL_JSON
+        from SPARQLWrapper import SPARQLWrapper
+    except Exception as exc:
+        raise RuntimeError("SPARQLWrapper is required for Wikidata queries. Install with: pip install SPARQLWrapper") from exc
+
+    sparql = SPARQLWrapper(WIKIDATA_SPARQL, agent=WIKIDATA_USER_AGENT)
+    sparql.setQuery(query)
+    sparql.setReturnFormat(SPARQL_JSON)
+    sparql.setTimeout(120)
+
+    last_err = None
+    for attempt in range(retries):
+        try:
+            return sparql.query().convert()
+        except Exception as exc:
+            last_err = exc
+            time.sleep(backoff ** attempt)
+    raise last_err
+
+
+def split_concat(s: Optional[str]) -> List[str]:
+    if not s:
+        return []
+    out: List[str] = []
+    seen = set()
+    for p in s.split("|"):
+        p = p.strip()
+        if not p or p in seen:
+            continue
+        seen.add(p)
+        out.append(p)
+    return out
+
+
+def build_item_enrichment_query(qids: List[str], langs: List[str], attrib_prop_ids: Optional[List[str]] = None) -> str:
+    if not qids:
+        raise ValueError("qids is empty")
+
+    langs = normalize_langs(langs) or list(DEFAULT_LANG_KEYS)
+    values = " ".join(f"wd:{q}" for q in qids if isinstance(q, str) and q.startswith("Q"))
+    if not values:
+        raise ValueError("no valid QIDs for enrichment query")
+
+    label_selects: List[str] = []
+    desc_selects: List[str] = []
+    sitelink_selects: List[str] = []
+    title_selects: List[str] = []
+    opt_lang_blocks: List[str] = []
+    opt_sitelink_blocks: List[str] = []
+
+    for lang in langs:
+        sfx = _safe_lang_var(lang)
+        label_selects.append(f"(SAMPLE(?label_{sfx}) AS ?label_{sfx})")
+        desc_selects.append(f"(SAMPLE(?desc_{sfx}) AS ?desc_{sfx})")
+        sitelink_selects.append(f"(SAMPLE(?{sfx}wiki) AS ?{sfx}wiki)")
+        title_selects.append(f"(SAMPLE(?{sfx}_title) AS ?{sfx}_title)")
+
+        opt_lang_blocks.append(f'OPTIONAL {{ ?item rdfs:label ?label_{sfx} . FILTER(LANG(?label_{sfx}) = "{lang}") }}')
+        opt_lang_blocks.append(f'OPTIONAL {{ ?item schema:description ?desc_{sfx} . FILTER(LANG(?desc_{sfx}) = "{lang}") }}')
+        opt_sitelink_blocks.append(
+            f"OPTIONAL {{ ?{sfx}wiki schema:about ?item ; schema:isPartOf <https://{lang}.wikipedia.org/> ; schema:name ?{sfx}_title . }}"
+        )
+
+    apids = normalize_prop_ids(attrib_prop_ids, default=ATTRIB_PROP_IDS)
+
+    prop_selects = []
+    prop_opts = []
+    for pid in apids:
+        prop_selects.append(f'(GROUP_CONCAT(DISTINCT STR(?{pid}val); separator="|") AS ?{pid}_vals)')
+        prop_opts.append(f'OPTIONAL {{ ?item wdt:{pid} ?{pid}val . }}')
+
+    query = f"""
+PREFIX wd: <http://www.wikidata.org/entity/>
+PREFIX wdt: <http://www.wikidata.org/prop/direct/>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX schema: <http://schema.org/>
+
+SELECT ?item
+  {" ".join(label_selects)}
+  {" ".join(desc_selects)}
+  {" ".join(sitelink_selects)}
+  {" ".join(title_selects)}
+  (GROUP_CONCAT(DISTINCT STR(?inst); separator="|") AS ?insts)
+  {" ".join(prop_selects)}
+WHERE {{
+  VALUES ?item {{ {values} }}
+
+  {" ".join(opt_lang_blocks)}
+  {" ".join(opt_sitelink_blocks)}
+  OPTIONAL {{ ?item wdt:P31 ?inst . }}
+  {" ".join(prop_opts)}
+}}
+GROUP BY ?item
+"""
+    return query
+
+
+def binding_to_enriched_record(binding: dict, langs: List[str], attrib_prop_ids: Optional[List[str]] = None) -> Optional[dict]:
+    item_uri = binding.get("item", {}).get("value")
+    qid = qid_from_uri(item_uri)
+    if not qid:
+        return None
+
+    langs = normalize_langs(langs) or list(DEFAULT_LANG_KEYS)
+
+    labels: Dict[str, Optional[str]] = {}
+    descriptions: Dict[str, Optional[str]] = {}
+    aliases: Dict[str, List[str]] = {}
+    sitelinks: Dict[str, Optional[str]] = {}
+    wiki_titles: Dict[str, Optional[str]] = {}
+
+    for lang in langs:
+        sfx = _safe_lang_var(lang)
+        labels[lang] = binding.get(f"label_{sfx}", {}).get("value")
+        descriptions[lang] = binding.get(f"desc_{sfx}", {}).get("value")
+        aliases[lang] = []
+        sitelinks[f"{lang}wiki"] = binding.get(f"{sfx}wiki", {}).get("value")
+        wiki_titles[lang] = binding.get(f"{sfx}_title", {}).get("value")
+
+    insts = set()
+    for x in split_concat(binding.get("insts", {}).get("value")):
+        q = qid_from_uri(x) if x.startswith("http") else x
+        if isinstance(q, str) and q.startswith("Q"):
+            insts.add(q)
+
+    apids = normalize_prop_ids(attrib_prop_ids, default=ATTRIB_PROP_IDS)
+    raw_attrib_qids: Dict[str, List[str]] = {}
+    for pid in apids:
+        qset: Set[str] = set()
+        for v in split_concat(binding.get(f"{pid}_vals", {}).get("value")):
+            q = qid_from_uri(v) if v.startswith("http") else v
+            if isinstance(q, str) and q.startswith("Q"):
+                qset.add(q)
+        raw_attrib_qids[pid] = sorted(qset)
+
+    return {
+        "qid": qid,
+        "uri": item_uri or f"http://www.wikidata.org/entity/{qid}",
+        "source": {},
+        "labels": labels,
+        "descriptions": descriptions,
+        "aliases": aliases,
+        "sitelinks": sitelinks,
+        "wiki_titles": wiki_titles,
+        "instance_of": sorted(insts),
+        "raw_attrib_qids": raw_attrib_qids,
+    }
 
 
 def party_sets(config: dict) -> Tuple[Set[str], Set[str]]:
