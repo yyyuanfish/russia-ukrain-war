@@ -16,6 +16,7 @@ Config section used:
 - `pipeline.paths`:
   - `entities_folder`
   - `classified_output`
+  - `attribution_jsonl_output` (optional, compact scoring audit JSONL)
   - `classified_report`
   - `visualization_outdir`
   - `visualization_report` (filename inside visualization_outdir)
@@ -25,6 +26,9 @@ Config section used:
   - `categories` (default true)
   - `attribution` (default true)
   - `visualization` (default true)
+- `pipeline.logging`:
+  - `enabled` / `file` / `append` / `log_queries` / `query_max_chars`
+  - same log file is forwarded to the three harvest scripts
 
 Notes:
 - Entity output filenames come from `visualization.entity_files` in config.
@@ -38,7 +42,16 @@ import subprocess
 import sys
 from typing import Dict
 
-from pipeline_common import read_json
+from pipeline_common import build_logger, read_json, resolve_logging_settings
+
+_RUN_LOGGER = None
+
+
+def _log_info(msg: str) -> None:
+    if _RUN_LOGGER:
+        _RUN_LOGGER.info(msg)
+    else:
+        print(msg)
 
 
 def _as_dict(x) -> dict:
@@ -88,6 +101,8 @@ def _resolve_pipeline(cfg: dict, config_path: str) -> dict:
 
     entities_folder = _abs_path(base_dir, _as_str(path_cfg.get("entities_folder"), "data/entities"))
     classified_output = _abs_path(base_dir, _as_str(path_cfg.get("classified_output"), "data/classified_entities.jsonl"))
+    attribution_jsonl_output = _as_str(path_cfg.get("attribution_jsonl_output"), "data/attribution_scores.jsonl")
+    attribution_jsonl_output = _abs_path(base_dir, attribution_jsonl_output) if attribution_jsonl_output else ""
     classified_report = _abs_path(base_dir, _as_str(path_cfg.get("classified_report"), "data/classified_report.json"))
     visualization_outdir = _abs_path(base_dir, _as_str(path_cfg.get("visualization_outdir"), "data/visualization"))
     visualization_report = _as_str(path_cfg.get("visualization_report"), "visualization_report.json")
@@ -108,6 +123,7 @@ def _resolve_pipeline(cfg: dict, config_path: str) -> dict:
             "navboxes_output": os.path.join(entities_folder, entity_files["navboxes"]),
             "categories_output": os.path.join(entities_folder, entity_files["categories"]),
             "classified_output": classified_output,
+            "attribution_jsonl_output": attribution_jsonl_output,
             "classified_report": classified_report,
             "visualization_outdir": visualization_outdir,
             "visualization_report": visualization_report,
@@ -116,8 +132,8 @@ def _resolve_pipeline(cfg: dict, config_path: str) -> dict:
 
 
 def _run_step(name: str, cmd: list, cwd: str) -> None:
-    print(f"[pipeline] {name}")
-    print("[pipeline] cmd:", " ".join(shlex.quote(x) for x in cmd))
+    _log_info(f"[pipeline] {name}")
+    _log_info("[pipeline] cmd: " + " ".join(shlex.quote(x) for x in cmd))
     subprocess.run(cmd, cwd=cwd, check=True)
 
 
@@ -128,6 +144,20 @@ def main() -> None:
 
     config_path = os.path.abspath(args.config)
     cfg = read_json(config_path)
+    log_cfg = resolve_logging_settings(
+        cfg,
+        config_path=config_path,
+        default_file="data/logs/pipeline_run.log",
+    )
+    global _RUN_LOGGER
+    if log_cfg["enabled"]:
+        _RUN_LOGGER = build_logger("run_pipeline", log_cfg["file"], append=log_cfg["append"], to_stdout=True)
+        _RUN_LOGGER.info(
+            f"[run_pipeline] log file: {log_cfg['file']} | "
+            f"log_queries={'on' if log_cfg['log_queries'] else 'off'} | "
+            f"query_max_chars={log_cfg['query_max_chars']}"
+        )
+
     pipeline_cfg = _resolve_pipeline(cfg, config_path)
     run_map = pipeline_cfg["run"]
     p = pipeline_cfg["paths"]
@@ -139,6 +169,7 @@ def main() -> None:
 
     script_dir = os.path.dirname(os.path.abspath(__file__))
     py = sys.executable
+    harvest_log_args = ["--log-file", log_cfg["file"]] if log_cfg["enabled"] else []
 
     if run_map["wikidata"]:
         _run_step(
@@ -150,6 +181,7 @@ def main() -> None:
                 config_path,
                 "--output",
                 p["wikidata_output"],
+                *harvest_log_args,
             ],
             cwd=script_dir,
         )
@@ -164,6 +196,7 @@ def main() -> None:
                 config_path,
                 "--output",
                 p["navboxes_output"],
+                *harvest_log_args,
             ],
             cwd=script_dir,
         )
@@ -178,6 +211,7 @@ def main() -> None:
                 config_path,
                 "--output",
                 p["categories_output"],
+                *harvest_log_args,
             ],
             cwd=script_dir,
         )
@@ -194,6 +228,8 @@ def main() -> None:
                 p["entities_folder"],
                 "--output",
                 p["classified_output"],
+                "--attribution-jsonl",
+                p["attribution_jsonl_output"],
                 "--report",
                 p["classified_report"],
             ],
@@ -220,10 +256,11 @@ def main() -> None:
             cwd=script_dir,
         )
 
-    print("[pipeline] completed")
-    print(f"[pipeline] entities_folder={p['entities_folder']}")
-    print(f"[pipeline] classified_output={p['classified_output']}")
-    print(f"[pipeline] visualization_outdir={p['visualization_outdir']}")
+    _log_info("[pipeline] completed")
+    _log_info(f"[pipeline] entities_folder={p['entities_folder']}")
+    _log_info(f"[pipeline] classified_output={p['classified_output']}")
+    _log_info(f"[pipeline] attribution_jsonl_output={p['attribution_jsonl_output']}")
+    _log_info(f"[pipeline] visualization_outdir={p['visualization_outdir']}")
 
 
 if __name__ == "__main__":

@@ -17,6 +17,9 @@ Input:
   If omitted, `config.navbox_seed_url` must be provided.
 - Optional source-hint mapping:
   - `harvest_hints.instance_of_map` in config.
+- Logging:
+  - `pipeline.logging` in config controls log file/query logging.
+  - `--log-file` can override the log file path for this run.
 
 Output:
 - --output: JSONL file (recommended:
@@ -39,10 +42,13 @@ from pipeline_common import (
     binding_to_enriched_record,
     build_item_enrichment_query,
     config_languages,
+    get_active_logger,
+    log_info,
     merge_records_by_qid,
     normalize_record,
     read_json,
     run_wikidata_sparql,
+    setup_script_logging,
     site_keys_for_langs,
     write_jsonl,
 )
@@ -55,10 +61,14 @@ def main() -> None:
     ap.add_argument("--start-url", default=None, help="Override start wikipedia URL")
     ap.add_argument("--navbox-index", type=int, default=0, help="Fallback navbox index")
     ap.add_argument("--sleep", type=float, default=0.25)
+    ap.add_argument("--log-file", default=None, help="Optional log file path (overrides config pipeline.logging.file)")
     ap.add_argument("--ensure-qid", nargs="*", default=[], help="Optional extra QIDs to force include")
     args = ap.parse_args()
 
     cfg = read_json(args.config)
+    setup_script_logging(cfg, config_path=args.config, script_name="harvest_navboxes", override_file=args.log_file)
+    if hasattr(wiki_common, "set_logger"):
+        wiki_common.set_logger(get_active_logger())
     navbox_names = cfg.get("navbox_names") if isinstance(cfg.get("navbox_names"), list) else []
     navbox_names = [x for x in navbox_names if isinstance(x, str) and x.strip()]
     if not navbox_names:
@@ -81,7 +91,7 @@ def main() -> None:
     source_api = wiki_common.wiki_api_for_lang(source_lang)
     base = f"https://{source_lang}.wikipedia.org"
 
-    print(f"[navboxes] Fetching seed page: {page_title} ({source_lang})")
+    log_info(f"[navboxes] Fetching seed page: {page_title} ({source_lang})")
     html = wiki_common.fetch_rendered_html_via_parse(page_title, sleep=args.sleep, api_url=source_api)
     soup = wiki_common.soup_from_html(html)
 
@@ -94,7 +104,7 @@ def main() -> None:
             navbox_index=args.navbox_index,
         )
         titles = set(wiki_common.titles_from_urls(links))
-        print(f"[navboxes] '{navbox_title}': titles={len(titles)}")
+        log_info(f"[navboxes] '{navbox_title}': titles={len(titles)}")
         for t in titles:
             title_to_paths[t].add(f"navbox:{navbox_title}")
 
@@ -103,7 +113,7 @@ def main() -> None:
 
     all_titles = sorted(title_to_paths.keys())
     t2q = wiki_common.wikipedia_titles_to_qids(all_titles, lang=source_lang, sleep=args.sleep)
-    print(f"[navboxes] resolved titles -> qids: {len(t2q)} / {len(all_titles)}")
+    log_info(f"[navboxes] resolved titles -> qids: {len(t2q)} / {len(all_titles)}")
 
     qid_to_paths: Dict[str, Set[str]] = defaultdict(set)
     qid_to_titles_by_lang: Dict[str, Dict[str, Set[str]]] = {lang: defaultdict(set) for lang in langs}
@@ -124,8 +134,11 @@ def main() -> None:
     batch_size = 120
     for i in range(0, len(qid_list), batch_size):
         batch = qid_list[i:i + batch_size]
+        batch_id = (i // batch_size) + 1
+        total_batches = ((len(qid_list) - 1) // batch_size) + 1 if qid_list else 0
+        log_info(f"[navboxes] enrich_batch={batch_id}/{total_batches} batch_size={len(batch)}")
         query = build_item_enrichment_query(batch, langs, attrib_prop_ids=attrib_prop_ids)
-        data = run_wikidata_sparql(query)
+        data = run_wikidata_sparql(query, query_name=f"navboxes.enrich.batch_{batch_id}", log_query=True)
 
         for b in data["results"]["bindings"]:
             rec = binding_to_enriched_record(b, langs, attrib_prop_ids=attrib_prop_ids)
@@ -161,7 +174,7 @@ def main() -> None:
 
     rows = merge_records_by_qid(rows, lang_keys=langs, site_keys=site_keys, attrib_prop_ids=attrib_prop_ids)
     write_jsonl(args.output, rows)
-    print(f"[navboxes] wrote {args.output} ({len(rows)} records)")
+    log_info(f"[navboxes] wrote {args.output} ({len(rows)} records)")
 
 
 if __name__ == "__main__":

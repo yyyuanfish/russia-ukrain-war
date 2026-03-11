@@ -28,6 +28,9 @@ Input:
   - `languages.all` in config.
 - Source hint control:
   - `harvest_hints.instance_of_map` in config (optional).
+- Logging:
+  - `pipeline.logging` in config controls log file/query logging.
+  - `--log-file` can override the log file path for this run.
 
 Output:
 - --output: JSONL file (recommended: `data/entities/wikidata_entities.jsonl`).
@@ -51,10 +54,13 @@ from pipeline_common import (
     binding_to_enriched_record,
     build_item_enrichment_query,
     config_languages,
+    get_active_logger,
+    log_info,
     merge_records_by_qid,
     normalize_record,
     read_json,
     run_wikidata_sparql,
+    setup_script_logging,
     site_keys_for_langs,
     write_jsonl,
     ensure_parent,
@@ -188,7 +194,7 @@ def _resolve_seed_qids(config: dict, sleep: float = 0.25) -> List[str]:
     return seeds
 
 
-def _query_qids(where_block: str, limit: Optional[int] = None) -> List[str]:
+def _query_qids(where_block: str, limit: Optional[int] = None, query_name: str = "wikidata.bucket") -> List[str]:
     query = PREFIXES + f"""
 SELECT DISTINCT ?item WHERE {{
 {where_block}
@@ -197,7 +203,7 @@ SELECT DISTINCT ?item WHERE {{
     if isinstance(limit, int) and limit > 0:
         query += f"\nLIMIT {limit}"
 
-    data = run_wikidata_sparql(query)
+    data = run_wikidata_sparql(query, query_name=query_name, log_query=True)
     out: List[str] = []
     seen = set()
     for b in data.get("results", {}).get("bindings", []):
@@ -292,8 +298,9 @@ def _collect_qids(
 
     bucket_map = _resolve_bucket_queries(seed_qids, wcfg=wcfg, type_anchors=type_anchors, rel_props=rel_props)
     for bucket, where_block in bucket_map.items():
-        print(f"[wikidata] Querying {bucket}...")
-        qids = _query_qids(where_block, limit=limit)
+        log_info(f"[wikidata] Querying {bucket}...")
+        qids = _query_qids(where_block, limit=limit, query_name=f"wikidata.bucket.{bucket}")
+        log_info(f"[wikidata] bucket={bucket} qids={len(qids)}")
         for q in qids:
             qid_to_paths[q].add(f"wikidata:{bucket}")
 
@@ -364,7 +371,7 @@ SELECT ?alias ?lang WHERE {{
 """
     out: Dict[str, List[str]] = {l: [] for l in langs}
     try:
-        data = run_wikidata_sparql(query)
+        data = run_wikidata_sparql(query, query_name=f"wikidata.aliases.{qid}", log_query=False)
     except Exception:
         return out
 
@@ -389,6 +396,7 @@ def _enrich_aliases(
     max_total_per_qid: int = 0,
     max_per_lang: int = 0,
 ) -> None:
+    total = len(records)
     for i, rec in enumerate(records, 1):
         rec["aliases"] = _collect_aliases(
             rec["qid"],
@@ -396,6 +404,8 @@ def _enrich_aliases(
             max_total_per_qid=max_total_per_qid,
             max_per_lang=max_per_lang,
         )
+        if i % 100 == 0 or i == total:
+            log_info(f"[wikidata] alias_progress={i}/{total}")
         if i % 25 == 0:
             # gentle pacing
             import time
@@ -417,7 +427,7 @@ def harvest(config: dict, limit: Optional[int], no_aliases: bool, extra_ensure_q
         raise SystemExit(
             "No Wikidata seeds found. Set wikidata.seed_qids or provide navbox_seed_url + wikidata.seed_from_navbox_page=true."
         )
-    print(f"[wikidata] seed_qids={seed_qids}")
+    log_info(f"[wikidata] seed_qids={seed_qids}")
 
     qid_to_paths = _collect_qids(
         seed_qids,
@@ -436,8 +446,15 @@ def harvest(config: dict, limit: Optional[int], no_aliases: bool, extra_ensure_q
     batch_size = 120
     for i in range(0, len(qids), batch_size):
         batch = qids[i:i + batch_size]
+        batch_id = (i // batch_size) + 1
+        total_batches = ((len(qids) - 1) // batch_size) + 1 if qids else 0
+        log_info(f"[wikidata] enrich_batch={batch_id}/{total_batches} batch_size={len(batch)}")
         query = build_item_enrichment_query(batch, langs, attrib_prop_ids=attrib_prop_ids)
-        data = run_wikidata_sparql(query)
+        data = run_wikidata_sparql(
+            query,
+            query_name=f"wikidata.enrich.batch_{batch_id}",
+            log_query=True,
+        )
 
         for b in data.get("results", {}).get("bindings", []):
             rec = binding_to_enriched_record(b, langs, attrib_prop_ids=attrib_prop_ids)
@@ -458,7 +475,7 @@ def harvest(config: dict, limit: Optional[int], no_aliases: bool, extra_ensure_q
     rows = [entities[q] for q in sorted(entities.keys())]
 
     if not no_aliases and alias_cfg.get("enabled", True):
-        print(
+        log_info(
             "[wikidata] Enriching aliases... "
             f"(max_total_per_qid={alias_cfg['max_total_per_qid']}, max_per_lang={alias_cfg['max_per_lang']})"
         )
@@ -491,11 +508,15 @@ def main() -> None:
     ap.add_argument("--config", required=True, help="Path to config.json")
     ap.add_argument("--output", required=True, help="Output JSONL path")
     ap.add_argument("--array", default=None, help="Optional output JSON array path")
+    ap.add_argument("--log-file", default=None, help="Optional log file path (overrides config pipeline.logging.file)")
     ap.add_argument("--limit", type=int, default=None, help="Optional per-bucket LIMIT override")
     ap.add_argument("--no-aliases", action="store_true", help="Skip alias enrichment")
     args = ap.parse_args()
 
     config = read_json(args.config)
+    setup_script_logging(config, config_path=args.config, script_name="harvest_wikidata", override_file=args.log_file)
+    if hasattr(wiki_common, "set_logger"):
+        wiki_common.set_logger(get_active_logger())
     wcfg = config.get("wikidata") if isinstance(config.get("wikidata"), dict) else {}
 
     limit = args.limit if args.limit is not None else _parse_optional_int(wcfg.get("limit"))
@@ -511,13 +532,13 @@ def main() -> None:
     )
 
     write_jsonl(args.output, rows)
-    print(f"[wikidata] wrote {args.output} ({len(rows)} records)")
+    log_info(f"[wikidata] wrote {args.output} ({len(rows)} records)")
 
     if args.array:
         ensure_parent(args.array)
         with open(args.array, "w", encoding="utf-8") as f:
             json.dump(rows, f, ensure_ascii=False, indent=2)
-        print(f"[wikidata] wrote {args.array}")
+        log_info(f"[wikidata] wrote {args.array}")
 
 
 if __name__ == "__main__":

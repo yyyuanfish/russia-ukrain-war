@@ -4,13 +4,13 @@
     "/Users/yuanyu/Desktop/Russia Ukrain War/pipeline_v2/data/entities/navboxes_entities.jsonl",
     "/Users/yuanyu/Desktop/Russia Ukrain War/pipeline_v2/data/entities/wikidata_entities.jsonl"
   ],
-  "loaded_rows": 4168,
-  "unique_qids": 4056,
+  "loaded_rows": 4175,
+  "unique_qids": 4063,
   "counts": {
-    "other": 1011,
-    "party1": 428,
-    "party2": 2495,
-    "mixed": 122
+    "mixed": 593,
+    "party2": 2437,
+    "party1": 469,
+    "other": 564
   },
   "party1_qids": [
     "Q159",
@@ -60,11 +60,11 @@
     "sleep_seconds": 0.2
   },
   "output_labels": {
-    "enabled": false,
+    "enabled": true,
     "field_name": "country_attribution",
     "label_map": {
-      "party1": "party1",
-      "party2": "party2",
+      "party1": "Russia",
+      "party2": "Ukraine",
       "mixed": "mixed",
       "other": "other"
     }
@@ -73,8 +73,8 @@
     "enabled": false,
     "field_name": "legacy_attribution",
     "label_map": {
-      "party1": "party1",
-      "party2": "party2",
+      "party1": "Russia",
+      "party2": "Ukraine",
       "mixed": "mixed",
       "other": "other"
     }
@@ -85,20 +85,20 @@
       "qid": "Q183",
       "label": "Germany",
       "label_lang": "en",
-      "count": 31
+      "count": 23
     },
     {
       "qid": "Q30",
       "label": "United States",
       "label_lang": "en",
-      "count": 26
+      "count": 13
     },
     {
       "qid": "Q184",
       "label": "Belarus",
       "label_lang": "en",
-      "count": 15
+      "count": 9
     }
   ],
-  "other_country_unknown": 833
+  "other_country_unknown": 460
 }

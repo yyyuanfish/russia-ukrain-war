@@ -19,8 +19,10 @@ It is imported by:
 """
 
 import json
+import logging
 import os
 import re
+import sys
 import time
 from collections import defaultdict
 from typing import Dict, List, Optional, Set, Tuple
@@ -30,6 +32,12 @@ DEFAULT_LANG_KEYS = ("en",)
 DEFAULT_SITE_KEYS = ("enwiki",)
 WIKIDATA_SPARQL = "https://query.wikidata.org/sparql"
 WIKIDATA_USER_AGENT = "conflict-pipeline/1.0 (config-driven research)"
+DEFAULT_PIPELINE_LOG_FILE = "data/logs/harvest.log"
+DEFAULT_QUERY_MAX_CHARS = 12000
+
+_ACTIVE_LOGGER: Optional[logging.Logger] = None
+_SPARQL_LOG_QUERIES: bool = False
+_SPARQL_QUERY_MAX_CHARS: int = DEFAULT_QUERY_MAX_CHARS
 
 
 def normalize_langs(langs: Optional[List[str]]) -> List[str]:
@@ -43,6 +51,144 @@ def normalize_langs(langs: Optional[List[str]]) -> List[str]:
         if vv and vv not in out:
             out.append(vv)
     return out
+
+
+def _as_bool(val, default: bool) -> bool:
+    if isinstance(val, bool):
+        return val
+    return default
+
+
+def _as_nonnegative_int(val, default: int) -> int:
+    try:
+        v = int(val)
+    except Exception:
+        return default
+    if v < 0:
+        return default
+    return v
+
+
+def _abs_from_config_path(config_path: Optional[str], path_value: str) -> str:
+    if os.path.isabs(path_value):
+        return os.path.normpath(path_value)
+    if config_path:
+        base_dir = os.path.dirname(os.path.abspath(config_path))
+    else:
+        base_dir = os.getcwd()
+    return os.path.normpath(os.path.join(base_dir, path_value))
+
+
+def resolve_logging_settings(
+    config: dict,
+    config_path: Optional[str] = None,
+    override_file: Optional[str] = None,
+    default_file: str = DEFAULT_PIPELINE_LOG_FILE,
+) -> dict:
+    pcfg = config.get("pipeline") if isinstance(config.get("pipeline"), dict) else {}
+    lcfg = pcfg.get("logging") if isinstance(pcfg.get("logging"), dict) else {}
+
+    enabled = _as_bool(lcfg.get("enabled"), True)
+    file_path = (
+        override_file
+        if isinstance(override_file, str) and override_file.strip()
+        else lcfg.get("file")
+    )
+    if not (isinstance(file_path, str) and file_path.strip()):
+        file_path = default_file
+
+    append = _as_bool(lcfg.get("append"), True)
+    log_queries = _as_bool(lcfg.get("log_queries"), True)
+    query_max_chars = _as_nonnegative_int(lcfg.get("query_max_chars"), DEFAULT_QUERY_MAX_CHARS) or DEFAULT_QUERY_MAX_CHARS
+
+    return {
+        "enabled": enabled,
+        "file": _abs_from_config_path(config_path, file_path) if enabled else "",
+        "append": append,
+        "log_queries": log_queries,
+        "query_max_chars": query_max_chars,
+    }
+
+
+def build_logger(name: str, log_file: str, append: bool = True, to_stdout: bool = True) -> logging.Logger:
+    logger = logging.getLogger(f"conflict_pipeline.{name}")
+    logger.handlers = []
+    logger.setLevel(logging.INFO)
+    logger.propagate = False
+
+    if to_stdout:
+        sh = logging.StreamHandler(sys.stdout)
+        sh.setFormatter(logging.Formatter("%(message)s"))
+        logger.addHandler(sh)
+
+    if log_file:
+        ensure_parent(log_file)
+        fh = logging.FileHandler(log_file, mode="a" if append else "w", encoding="utf-8")
+        fh.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s", "%Y-%m-%d %H:%M:%S"))
+        logger.addHandler(fh)
+
+    return logger
+
+
+def set_active_logger(
+    logger: Optional[logging.Logger],
+    log_queries: bool = False,
+    query_max_chars: int = DEFAULT_QUERY_MAX_CHARS,
+) -> None:
+    global _ACTIVE_LOGGER, _SPARQL_LOG_QUERIES, _SPARQL_QUERY_MAX_CHARS
+    _ACTIVE_LOGGER = logger
+    _SPARQL_LOG_QUERIES = bool(log_queries)
+    _SPARQL_QUERY_MAX_CHARS = max(64, int(query_max_chars))
+
+
+def get_active_logger() -> Optional[logging.Logger]:
+    return _ACTIVE_LOGGER
+
+
+def log_info(msg: str) -> None:
+    if _ACTIVE_LOGGER:
+        _ACTIVE_LOGGER.info(msg)
+    else:
+        print(msg)
+
+
+def log_warning(msg: str) -> None:
+    if _ACTIVE_LOGGER:
+        _ACTIVE_LOGGER.warning(msg)
+    else:
+        print(f"WARN: {msg}")
+
+
+def setup_script_logging(
+    config: dict,
+    config_path: Optional[str],
+    script_name: str,
+    override_file: Optional[str] = None,
+) -> dict:
+    settings = resolve_logging_settings(config, config_path=config_path, override_file=override_file)
+    if not settings["enabled"]:
+        set_active_logger(None, log_queries=False, query_max_chars=settings["query_max_chars"])
+        return settings
+
+    logger = build_logger(script_name, settings["file"], append=settings["append"], to_stdout=True)
+    set_active_logger(
+        logger,
+        log_queries=settings["log_queries"],
+        query_max_chars=settings["query_max_chars"],
+    )
+    logger.info(
+        f"[{script_name}] log file: {settings['file']} | "
+        f"log_queries={'on' if settings['log_queries'] else 'off'} | "
+        f"query_max_chars={settings['query_max_chars']}"
+    )
+    return settings
+
+
+def _query_preview(query: str, max_chars: int) -> str:
+    q = query.strip()
+    if len(q) <= max_chars:
+        return q
+    return q[:max_chars] + "\n... [truncated]"
 
 
 def site_keys_for_langs(langs: List[str]) -> List[str]:
@@ -306,7 +452,13 @@ def config_languages(config: dict) -> List[str]:
     return langs
 
 
-def run_wikidata_sparql(query: str, retries: int = 3, backoff: float = 2.0) -> dict:
+def run_wikidata_sparql(
+    query: str,
+    retries: int = 3,
+    backoff: float = 2.0,
+    query_name: Optional[str] = None,
+    log_query: Optional[bool] = None,
+) -> dict:
     try:
         from SPARQLWrapper import JSON as SPARQL_JSON
         from SPARQLWrapper import SPARQLWrapper
@@ -318,12 +470,28 @@ def run_wikidata_sparql(query: str, retries: int = 3, backoff: float = 2.0) -> d
     sparql.setReturnFormat(SPARQL_JSON)
     sparql.setTimeout(120)
 
+    logger = get_active_logger()
+    should_log_query = _SPARQL_LOG_QUERIES if log_query is None else bool(log_query)
+    tag = query_name or "sparql_query"
+    if logger and should_log_query:
+        logger.info(f"[sparql] start: {tag}")
+        logger.info(f"[sparql] endpoint: {WIKIDATA_SPARQL}")
+        logger.info("[sparql] query:\n" + _query_preview(query, _SPARQL_QUERY_MAX_CHARS))
+
     last_err = None
+    t0 = time.time()
     for attempt in range(retries):
         try:
-            return sparql.query().convert()
+            data = sparql.query().convert()
+            if logger and should_log_query:
+                n_bindings = len(data.get("results", {}).get("bindings", []) or [])
+                elapsed = time.time() - t0
+                logger.info(f"[sparql] done: {tag} | bindings={n_bindings} | elapsed={elapsed:.2f}s")
+            return data
         except Exception as exc:
             last_err = exc
+            if logger:
+                logger.warning(f"[sparql] failed attempt={attempt + 1}/{retries} tag={tag}: {exc}")
             time.sleep(backoff ** attempt)
     raise last_err
 

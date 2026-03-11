@@ -6,10 +6,10 @@ This project builds a Wikidata-backed entity inventory for the **Russo–Ukraini
 This project folder (`/Users/yuanyu/Desktop/Russia Ukrain War`) contains a pipeline to:
 >>>>>>> Stashed changes
 
-1. **Harvest entities (QIDs)** from **Wikidata** via SPARQL queries (people/events/orgs/policies/media narratives).
-2. **Harvest entities (QIDs)** from a selected Wikipedia navbox (default: *Russo-Ukrainian War*) with optional category expansion (`bfs/dfs`, multilingual).
-3. **Merge + classify** all harvested QIDs into **Russian / Ukraine / mixed / other** using structured Wikidata evidence + light text fallback.
-4. **Analyze overlap** between the two harvest methods and generate **figures + a compact overlap report**.
+1. **Harvest entities (QIDs)** from **Wikidata** via SPARQL queries (people/events/orgs/policies/media narratives) using `ru_ua_harvest_wikidata_entities.py` (v2 equivalent: `pipeline_v2/harvest_wikidata.py`).
+2. **Harvest entities (QIDs)** from Wikipedia navbox/category sources using `ru_ua_harvest_wikipedia_navboxes.py` (v2 split: `pipeline_v2/harvest_navboxes.py` + `pipeline_v2/harvest_categories.py`).
+3. **Merge + classify** all harvested QIDs into **Russian / Ukraine / mixed / other** using `ru_ua_classify_entities.py` (v2 equivalent: `pipeline_v2/attribution.py`).
+4. **Analyze overlap** and generate **figures + compact report** using `ru_ua_harvest_visual.py` (v2 equivalent: `pipeline_v2/visualization.py`).
 
 ---
 
@@ -237,8 +237,11 @@ It then assigns:
 - **mixed**: RU evidence > 0 and UA evidence > 0  
 - **Russian**: RU evidence > 0 and UA evidence == 0  
 - **Ukraine**: UA evidence > 0 and RU evidence == 0  
-- **other**: only if RU/UA evidence is absent **and** `other_score >= other_threshold`  
-- **mixed** (fallback): if RU/UA evidence is absent and `other_score` is not strong enough
+- **other**: RU evidence == 0 and UA evidence == 0
+
+Notes:
+- `other_score` / `other_threshold` are still recorded for auditing and tuning.
+- The final label decision no longer gates `other` on `other_score`.
 
 To audit why something was labeled, inspect:
 - `ru_ua_attribution_detail.hits` in `classified_ru_ua_entities.jsonl`
