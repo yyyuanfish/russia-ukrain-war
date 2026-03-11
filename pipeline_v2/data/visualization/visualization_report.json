@@ -6,10 +6,10 @@
       "categories": "/Users/yuanyu/Desktop/Russia Ukrain War/pipeline_v2/data/entities/categories_entities.jsonl"
     },
     "sizes": {
-      "wikidata": 2722,
+      "wikidata": 2723,
       "navboxes": 131,
-      "categories": 1315,
-      "union": 4056
+      "categories": 1321,
+      "union": 4063
     },
     "overlap": {
       "wd_nav": 17,
@@ -20,68 +20,681 @@
   },
   "classified": {
     "file": "/Users/yuanyu/Desktop/Russia Ukrain War/pipeline_v2/data/classified_entities.jsonl",
-    "rows": 4056,
+    "rows": 4063,
     "attribution_counts": {
-      "other": 1011,
-      "party1": 428,
-      "party2": 2495,
-      "mixed": 122
+      "mixed": 593,
+      "party2": 2437,
+      "party1": 469,
+      "other": 564
     },
     "source_bucket_counts": {
       "nav_cat": 42,
-      "wd_only": 2663,
-      "cat_only": 1220,
+      "wd_only": 2664,
+      "cat_only": 1226,
       "nav_only": 72,
       "all_three": 11,
       "wd_cat": 42,
       "wd_nav": 6
     },
     "by_label_source_bucket": {
-      "other": {
-        "nav_cat": 9,
-        "wd_only": 438,
-        "cat_only": 528,
-        "nav_only": 18,
+      "mixed": {
+        "nav_cat": 25,
+        "wd_only": 157,
+        "cat_only": 344,
+        "all_three": 11,
         "wd_cat": 17,
-        "all_three": 1
-      },
-      "party1": {
-        "cat_only": 333,
-        "wd_only": 78,
-        "nav_cat": 5,
-        "nav_only": 7,
-        "wd_cat": 4,
-        "all_three": 1
+        "nav_only": 34,
+        "wd_nav": 5
       },
       "party2": {
-        "wd_only": 2119,
-        "cat_only": 291,
-        "nav_cat": 24,
-        "wd_cat": 15,
-        "nav_only": 39,
-        "wd_nav": 5,
-        "all_three": 2
+        "wd_only": 2100,
+        "cat_only": 286,
+        "nav_cat": 14,
+        "wd_cat": 16,
+        "nav_only": 20,
+        "wd_nav": 1
       },
-      "mixed": {
-        "cat_only": 68,
-        "all_three": 7,
-        "nav_only": 8,
-        "nav_cat": 4,
-        "wd_only": 28,
-        "wd_nav": 1,
-        "wd_cat": 6
+      "party1": {
+        "cat_only": 374,
+        "wd_only": 82,
+        "nav_cat": 3,
+        "wd_cat": 2,
+        "nav_only": 8
+      },
+      "other": {
+        "wd_only": 325,
+        "cat_only": 222,
+        "nav_only": 10,
+        "wd_cat": 7
       }
     },
     "label_unique_qids": {
-      "other": 1011,
-      "party1": 428,
-      "party2": 2495,
-      "mixed": 122
+      "mixed": 593,
+      "party2": 2437,
+      "party1": 469,
+      "other": 564
     },
     "language_coverage_nonempty_label_or_desc": {
-      "en": 1913,
-      "ru": 1512,
-      "uk": 3736
+      "en": 1918,
+      "ru": 1517,
+      "uk": 3744
+    },
+    "hint_attribution": {
+      "labels": [
+        "party1",
+        "party2",
+        "mixed",
+        "other"
+      ],
+      "hints": [
+        "person",
+        "event",
+        "organization",
+        "policy",
+        "unknown"
+      ],
+      "counts": {
+        "party1": {
+          "person": 320,
+          "event": 0,
+          "organization": 10,
+          "policy": 1,
+          "unknown": 138
+        },
+        "party2": {
+          "person": 2057,
+          "event": 25,
+          "organization": 33,
+          "policy": 3,
+          "unknown": 319
+        },
+        "mixed": {
+          "person": 130,
+          "event": 40,
+          "organization": 13,
+          "policy": 1,
+          "unknown": 409
+        },
+        "other": {
+          "person": 283,
+          "event": 5,
+          "organization": 17,
+          "policy": 0,
+          "unknown": 259
+        }
+      },
+      "column_totals_by_hint": {
+        "person": 2790,
+        "event": 70,
+        "organization": 73,
+        "policy": 5,
+        "unknown": 1125
+      },
+      "row_totals_by_attribution": {
+        "party1": 469,
+        "party2": 2437,
+        "mixed": 593,
+        "other": 564
+      },
+      "cell_percent_of_hint_total": {
+        "party1": {
+          "person": 11.469534050179211,
+          "event": 0.0,
+          "organization": 13.698630136986301,
+          "policy": 20.0,
+          "unknown": 12.266666666666667
+        },
+        "party2": {
+          "person": 73.72759856630825,
+          "event": 35.714285714285715,
+          "organization": 45.205479452054796,
+          "policy": 60.0,
+          "unknown": 28.355555555555554
+        },
+        "mixed": {
+          "person": 4.659498207885305,
+          "event": 57.142857142857146,
+          "organization": 17.80821917808219,
+          "policy": 20.0,
+          "unknown": 36.355555555555554
+        },
+        "other": {
+          "person": 10.14336917562724,
+          "event": 7.142857142857143,
+          "organization": 23.28767123287671,
+          "policy": 0.0,
+          "unknown": 23.022222222222222
+        }
+      },
+      "cell_percent_of_row_total": {
+        "party1": {
+          "person": 68.23027718550107,
+          "event": 0.0,
+          "organization": 2.1321961620469083,
+          "policy": 0.21321961620469082,
+          "unknown": 29.424307036247335
+        },
+        "party2": {
+          "person": 84.40705785802216,
+          "event": 1.0258514567090686,
+          "organization": 1.3541239228559705,
+          "policy": 0.12310217480508823,
+          "unknown": 13.089864587607714
+        },
+        "mixed": {
+          "person": 21.922428330522767,
+          "event": 6.745362563237774,
+          "organization": 2.1922428330522767,
+          "policy": 0.16863406408094436,
+          "unknown": 68.97133220910624
+        },
+        "other": {
+          "person": 50.177304964539005,
+          "event": 0.8865248226950354,
+          "organization": 3.0141843971631204,
+          "policy": 0.0,
+          "unknown": 45.92198581560284
+        }
+      },
+      "hint_extraction": {
+        "method": "effective_hint",
+        "description": "Uses source.hint and _sources[*].hint; prefers most frequent non-unknown hint per entity."
+      },
+      "note": "Provides both column-normalized and row-normalized cell percentages."
+    },
+    "hint_attribution_by_source": {
+      "wikidata": {
+        "labels": [
+          "party1",
+          "party2",
+          "mixed",
+          "other"
+        ],
+        "hints": [
+          "person",
+          "event",
+          "organization",
+          "unknown"
+        ],
+        "counts": {
+          "party1": {
+            "person": 63,
+            "event": 0,
+            "organization": 1,
+            "unknown": 20
+          },
+          "party2": {
+            "person": 2039,
+            "event": 2,
+            "organization": 14,
+            "unknown": 62
+          },
+          "mixed": {
+            "person": 97,
+            "event": 12,
+            "organization": 4,
+            "unknown": 77
+          },
+          "other": {
+            "person": 261,
+            "event": 0,
+            "organization": 4,
+            "unknown": 67
+          }
+        },
+        "column_totals_by_hint": {
+          "person": 2460,
+          "event": 14,
+          "organization": 23,
+          "unknown": 226
+        },
+        "row_totals_by_attribution": {
+          "party1": 84,
+          "party2": 2117,
+          "mixed": 190,
+          "other": 332
+        },
+        "cell_percent_of_hint_total": {
+          "party1": {
+            "person": 2.5609756097560976,
+            "event": 0.0,
+            "organization": 4.3478260869565215,
+            "unknown": 8.849557522123893
+          },
+          "party2": {
+            "person": 82.88617886178862,
+            "event": 14.285714285714286,
+            "organization": 60.869565217391305,
+            "unknown": 27.43362831858407
+          },
+          "mixed": {
+            "person": 3.9430894308943087,
+            "event": 85.71428571428571,
+            "organization": 17.391304347826086,
+            "unknown": 34.07079646017699
+          },
+          "other": {
+            "person": 10.609756097560975,
+            "event": 0.0,
+            "organization": 17.391304347826086,
+            "unknown": 29.646017699115045
+          }
+        },
+        "cell_percent_of_row_total": {
+          "party1": {
+            "person": 75.0,
+            "event": 0.0,
+            "organization": 1.1904761904761905,
+            "unknown": 23.80952380952381
+          },
+          "party2": {
+            "person": 96.31554085970713,
+            "event": 0.0944733112895607,
+            "organization": 0.6613131790269249,
+            "unknown": 2.9286726499763818
+          },
+          "mixed": {
+            "person": 51.05263157894737,
+            "event": 6.315789473684211,
+            "organization": 2.1052631578947367,
+            "unknown": 40.526315789473685
+          },
+          "other": {
+            "person": 78.6144578313253,
+            "event": 0.0,
+            "organization": 1.2048192771084338,
+            "unknown": 20.180722891566266
+          }
+        },
+        "hint_extraction": {
+          "method": "effective_hint",
+          "description": "Uses source.hint and _sources[*].hint; prefers most frequent non-unknown hint per entity."
+        },
+        "note": "Provides both column-normalized and row-normalized cell percentages."
+      },
+      "navboxes": {
+        "labels": [
+          "party1",
+          "party2",
+          "mixed",
+          "other"
+        ],
+        "hints": [
+          "event",
+          "organization",
+          "unknown"
+        ],
+        "counts": {
+          "party1": {
+            "event": 0,
+            "organization": 0,
+            "unknown": 11
+          },
+          "party2": {
+            "event": 17,
+            "organization": 0,
+            "unknown": 18
+          },
+          "mixed": {
+            "event": 31,
+            "organization": 2,
+            "unknown": 42
+          },
+          "other": {
+            "event": 0,
+            "organization": 0,
+            "unknown": 10
+          }
+        },
+        "column_totals_by_hint": {
+          "event": 48,
+          "organization": 2,
+          "unknown": 81
+        },
+        "row_totals_by_attribution": {
+          "party1": 11,
+          "party2": 35,
+          "mixed": 75,
+          "other": 10
+        },
+        "cell_percent_of_hint_total": {
+          "party1": {
+            "event": 0.0,
+            "organization": 0.0,
+            "unknown": 13.580246913580247
+          },
+          "party2": {
+            "event": 35.416666666666664,
+            "organization": 0.0,
+            "unknown": 22.22222222222222
+          },
+          "mixed": {
+            "event": 64.58333333333333,
+            "organization": 100.0,
+            "unknown": 51.851851851851855
+          },
+          "other": {
+            "event": 0.0,
+            "organization": 0.0,
+            "unknown": 12.345679012345679
+          }
+        },
+        "cell_percent_of_row_total": {
+          "party1": {
+            "event": 0.0,
+            "organization": 0.0,
+            "unknown": 100.0
+          },
+          "party2": {
+            "event": 48.57142857142857,
+            "organization": 0.0,
+            "unknown": 51.42857142857143
+          },
+          "mixed": {
+            "event": 41.333333333333336,
+            "organization": 2.6666666666666665,
+            "unknown": 56.0
+          },
+          "other": {
+            "event": 0.0,
+            "organization": 0.0,
+            "unknown": 100.0
+          }
+        },
+        "hint_extraction": {
+          "method": "effective_hint",
+          "description": "Uses source.hint and _sources[*].hint; prefers most frequent non-unknown hint per entity."
+        },
+        "note": "Provides both column-normalized and row-normalized cell percentages."
+      },
+      "categories": {
+        "labels": [
+          "party1",
+          "party2",
+          "mixed",
+          "other"
+        ],
+        "hints": [
+          "person",
+          "event",
+          "organization",
+          "policy",
+          "unknown"
+        ],
+        "counts": {
+          "party1": {
+            "person": 258,
+            "event": 0,
+            "organization": 9,
+            "policy": 1,
+            "unknown": 111
+          },
+          "party2": {
+            "person": 20,
+            "event": 11,
+            "organization": 20,
+            "policy": 3,
+            "unknown": 262
+          },
+          "mixed": {
+            "person": 33,
+            "event": 13,
+            "organization": 11,
+            "policy": 1,
+            "unknown": 339
+          },
+          "other": {
+            "person": 23,
+            "event": 5,
+            "organization": 13,
+            "policy": 0,
+            "unknown": 188
+          }
+        },
+        "column_totals_by_hint": {
+          "person": 334,
+          "event": 29,
+          "organization": 53,
+          "policy": 5,
+          "unknown": 900
+        },
+        "row_totals_by_attribution": {
+          "party1": 379,
+          "party2": 316,
+          "mixed": 397,
+          "other": 229
+        },
+        "cell_percent_of_hint_total": {
+          "party1": {
+            "person": 77.24550898203593,
+            "event": 0.0,
+            "organization": 16.9811320754717,
+            "policy": 20.0,
+            "unknown": 12.333333333333334
+          },
+          "party2": {
+            "person": 5.9880239520958085,
+            "event": 37.93103448275862,
+            "organization": 37.735849056603776,
+            "policy": 60.0,
+            "unknown": 29.11111111111111
+          },
+          "mixed": {
+            "person": 9.880239520958083,
+            "event": 44.827586206896555,
+            "organization": 20.754716981132077,
+            "policy": 20.0,
+            "unknown": 37.666666666666664
+          },
+          "other": {
+            "person": 6.88622754491018,
+            "event": 17.24137931034483,
+            "organization": 24.528301886792452,
+            "policy": 0.0,
+            "unknown": 20.88888888888889
+          }
+        },
+        "cell_percent_of_row_total": {
+          "party1": {
+            "person": 68.07387862796834,
+            "event": 0.0,
+            "organization": 2.37467018469657,
+            "policy": 0.2638522427440633,
+            "unknown": 29.28759894459103
+          },
+          "party2": {
+            "person": 6.329113924050633,
+            "event": 3.481012658227848,
+            "organization": 6.329113924050633,
+            "policy": 0.9493670886075949,
+            "unknown": 82.9113924050633
+          },
+          "mixed": {
+            "person": 8.312342569269521,
+            "event": 3.27455919395466,
+            "organization": 2.770780856423174,
+            "policy": 0.2518891687657431,
+            "unknown": 85.39042821158691
+          },
+          "other": {
+            "person": 10.043668122270743,
+            "event": 2.183406113537118,
+            "organization": 5.676855895196507,
+            "policy": 0.0,
+            "unknown": 82.09606986899563
+          }
+        },
+        "hint_extraction": {
+          "method": "effective_hint",
+          "description": "Uses source.hint and _sources[*].hint; prefers most frequent non-unknown hint per entity."
+        },
+        "note": "Provides both column-normalized and row-normalized cell percentages."
+      }
+    },
+    "unknown_hint_analysis": {
+      "reason_counts_overall": {
+        "explicit_unknown_only": 1125
+      },
+      "reason_counts_by_attribution": {
+        "mixed": {
+          "explicit_unknown_only": 409
+        },
+        "party2": {
+          "explicit_unknown_only": 319
+        },
+        "party1": {
+          "explicit_unknown_only": 138
+        },
+        "other": {
+          "explicit_unknown_only": 259
+        }
+      },
+      "reason_counts_by_source": {
+        "navboxes": {
+          "explicit_unknown_only": 81
+        },
+        "categories": {
+          "explicit_unknown_only": 900
+        },
+        "wikidata": {
+          "explicit_unknown_only": 226
+        }
+      },
+      "reason_counts_by_source_and_attribution": {
+        "wikidata": {
+          "mixed": {
+            "explicit_unknown_only": 77
+          },
+          "other": {
+            "explicit_unknown_only": 67
+          },
+          "party2": {
+            "explicit_unknown_only": 62
+          },
+          "party1": {
+            "explicit_unknown_only": 20
+          }
+        },
+        "navboxes": {
+          "mixed": {
+            "explicit_unknown_only": 42
+          },
+          "other": {
+            "explicit_unknown_only": 10
+          },
+          "party2": {
+            "explicit_unknown_only": 18
+          },
+          "party1": {
+            "explicit_unknown_only": 11
+          }
+        },
+        "categories": {
+          "mixed": {
+            "explicit_unknown_only": 339
+          },
+          "party2": {
+            "explicit_unknown_only": 262
+          },
+          "party1": {
+            "explicit_unknown_only": 111
+          },
+          "other": {
+            "explicit_unknown_only": 188
+          }
+        }
+      },
+      "group_counts_overall": {
+        "true_unknown": 1125
+      },
+      "group_counts_by_attribution": {
+        "mixed": {
+          "true_unknown": 409
+        },
+        "party2": {
+          "true_unknown": 319
+        },
+        "party1": {
+          "true_unknown": 138
+        },
+        "other": {
+          "true_unknown": 259
+        }
+      },
+      "group_counts_by_source": {
+        "navboxes": {
+          "true_unknown": 81
+        },
+        "categories": {
+          "true_unknown": 900
+        },
+        "wikidata": {
+          "true_unknown": 226
+        }
+      },
+      "group_counts_by_source_and_attribution": {
+        "wikidata": {
+          "mixed": {
+            "true_unknown": 77
+          },
+          "other": {
+            "true_unknown": 67
+          },
+          "party2": {
+            "true_unknown": 62
+          },
+          "party1": {
+            "true_unknown": 20
+          }
+        },
+        "navboxes": {
+          "mixed": {
+            "true_unknown": 42
+          },
+          "other": {
+            "true_unknown": 10
+          },
+          "party2": {
+            "true_unknown": 18
+          },
+          "party1": {
+            "true_unknown": 11
+          }
+        },
+        "categories": {
+          "mixed": {
+            "true_unknown": 339
+          },
+          "party2": {
+            "true_unknown": 262
+          },
+          "party1": {
+            "true_unknown": 111
+          },
+          "other": {
+            "true_unknown": 188
+          }
+        }
+      },
+      "reason_definitions": {
+        "missing_source_metadata": "No source metadata dictionaries were found for the entity.",
+        "missing_hint_metadata": "Source metadata exists but 'hint' key is absent.",
+        "blank_hint_value": "Hint key exists but values are blank/null.",
+        "explicit_unknown_only": "Hint values exist and all normalize to 'unknown'.",
+        "mixed_known_and_unknown": "Both known hints and unknown hints are present.",
+        "has_known_hint_only": "Known hints are present and no unknown hint values are used."
+      },
+      "group_definitions": {
+        "missing_info": "Unknown is caused by missing source/hint metadata.",
+        "true_unknown": "Unknown is explicitly provided by source metadata.",
+        "mixed_known_unknown": "Known and unknown hint values appear together.",
+        "known_hint": "Known hint values only (normally not counted as unknown).",
+        "other": "Any reason not covered above."
+      },
+      "focus_for_interpretation": [
+        "Use missing_info vs true_unknown to separate metadata gaps from real unknown entities.",
+        "Source-level group counts help identify which harvester introduces unknown dilution."
+      ]
     }
   },
   "visualization_config": {
@@ -91,8 +704,8 @@
       "uk"
     ],
     "attribution_display_names": {
-      "party1": "ru",
-      "party2": "uk",
+      "party1": "Russia",
+      "party2": "Ukraine",
       "mixed": "mixed",
       "other": "other"
     },
@@ -123,6 +736,45 @@
       "mixed": "mixed",
       "other": "other"
     }
+  },
+  "outputs": {
+    "hint_attribution_csv": {
+      "column": "/Users/yuanyu/Desktop/Russia Ukrain War/pipeline_v2/data/visualization/hint_attribution_table.csv",
+      "row": "/Users/yuanyu/Desktop/Russia Ukrain War/pipeline_v2/data/visualization/hint_attribution_table_row_normalized.csv"
+    },
+    "hint_attribution_csv_by_source": {
+      "wikidata": {
+        "column": "/Users/yuanyu/Desktop/Russia Ukrain War/pipeline_v2/data/visualization/hint_attribution_table_wikidata.csv",
+        "row": "/Users/yuanyu/Desktop/Russia Ukrain War/pipeline_v2/data/visualization/hint_attribution_table_wikidata_row_normalized.csv"
+      },
+      "navboxes": {
+        "column": "/Users/yuanyu/Desktop/Russia Ukrain War/pipeline_v2/data/visualization/hint_attribution_table_navboxes.csv",
+        "row": "/Users/yuanyu/Desktop/Russia Ukrain War/pipeline_v2/data/visualization/hint_attribution_table_navboxes_row_normalized.csv"
+      },
+      "categories": {
+        "column": "/Users/yuanyu/Desktop/Russia Ukrain War/pipeline_v2/data/visualization/hint_attribution_table_categories.csv",
+        "row": "/Users/yuanyu/Desktop/Russia Ukrain War/pipeline_v2/data/visualization/hint_attribution_table_categories_row_normalized.csv"
+      }
+    },
+    "hint_attribution_heatmap": {
+      "column": "/Users/yuanyu/Desktop/Russia Ukrain War/pipeline_v2/data/visualization/hint_attribution_heatmap.png",
+      "row": "/Users/yuanyu/Desktop/Russia Ukrain War/pipeline_v2/data/visualization/hint_attribution_heatmap_row_normalized.png"
+    },
+    "hint_attribution_heatmap_by_source": {
+      "wikidata": {
+        "column": "/Users/yuanyu/Desktop/Russia Ukrain War/pipeline_v2/data/visualization/hint_attribution_heatmap_wikidata.png",
+        "row": "/Users/yuanyu/Desktop/Russia Ukrain War/pipeline_v2/data/visualization/hint_attribution_heatmap_wikidata_row_normalized.png"
+      },
+      "navboxes": {
+        "column": "/Users/yuanyu/Desktop/Russia Ukrain War/pipeline_v2/data/visualization/hint_attribution_heatmap_navboxes.png",
+        "row": "/Users/yuanyu/Desktop/Russia Ukrain War/pipeline_v2/data/visualization/hint_attribution_heatmap_navboxes_row_normalized.png"
+      },
+      "categories": {
+        "column": "/Users/yuanyu/Desktop/Russia Ukrain War/pipeline_v2/data/visualization/hint_attribution_heatmap_categories.png",
+        "row": "/Users/yuanyu/Desktop/Russia Ukrain War/pipeline_v2/data/visualization/hint_attribution_heatmap_categories_row_normalized.png"
+      }
+    },
+    "unknown_hint_plot": "/Users/yuanyu/Desktop/Russia Ukrain War/pipeline_v2/data/visualization/unknown_hint_reason_counts.png"
   },
   "note": "Uses attribution field when present; fallback field is config-driven."
 }

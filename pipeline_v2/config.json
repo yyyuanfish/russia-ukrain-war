@@ -6,8 +6,8 @@
     ],
     "languages": {
       "all": "Default: [\"en\", \"ru\", \"uk\"]. Used by category crawl, text scoring, Wikidata alias enrichment, and visualization language order.",
-      "party1": "Default role language for side 1 (used by visualization label for party1).",
-      "party2": "Default role language for side 2 (used by visualization label for party2).",
+      "party1": "Default role language for side 1 (used as fallback visualization label if party1.label is missing).",
+      "party2": "Default role language for side 2 (used as fallback visualization label if party2.label is missing).",
       "party3": "Optional third-language anchor for research setup."
     },
     "conflicting_parties": {
@@ -63,7 +63,7 @@
       "party1_patterns": "Regex list by language for side 1 textual evidence.",
       "party2_patterns": "Regex list by language for side 2 textual evidence.",
       "other_patterns": "Regex list by language for third-party textual evidence.",
-      "output_labels": "Optional named-label output map. Set enabled=true to write country names (field_name defaults to country_attribution).",
+      "output_labels": "Named-label output map. Defaults now enable writing country names to field_name (country_attribution).",
       "legacy_output": "Optional compatibility output map. Set enabled=true to emit an extra legacy field (field_name defaults to legacy_attribution).",
       "report_label_lang": "Optional language code for third-country labels in attribution report (defaults to languages.party3, then en)."
     },
@@ -84,9 +84,17 @@
       "paths": {
         "entities_folder": "Default: data/entities",
         "classified_output": "Default: data/classified_entities.jsonl",
+        "attribution_jsonl_output": "Default: data/attribution_scores.jsonl (compact per-entity scoring audit from attribution.py).",
         "classified_report": "Default: data/classified_report.json",
         "visualization_outdir": "Default: data/visualization",
         "visualization_report": "Default: visualization_report.json (filename inside visualization_outdir)."
+      },
+      "logging": {
+        "enabled": "Default: true. Enable one shared log file for harvest/pipeline runs.",
+        "file": "Default: data/logs/harvest.log. Relative paths are resolved from config directory.",
+        "append": "Default: true. true appends logs across runs; false overwrites per run.",
+        "log_queries": "Default: true. true logs SPARQL query text and MediaWiki API request details.",
+        "query_max_chars": "Default: 12000. Max characters of query text to write into log."
       }
     }
   },
@@ -234,9 +242,17 @@
     "paths": {
       "entities_folder": "data/entities",
       "classified_output": "data/classified_entities.jsonl",
+      "attribution_jsonl_output": "data/attribution_scores.jsonl",
       "classified_report": "data/classified_report.json",
       "visualization_outdir": "data/visualization",
       "visualization_report": "visualization_report.json"
+    },
+    "logging": {
+      "enabled": true,
+      "file": "data/logs/harvest.log",
+      "append": true,
+      "log_queries": true,
+      "query_max_chars": 12000
     }
   },
   "classification": {
@@ -274,7 +290,7 @@
       "sleep_seconds": 0.2
     },
     "output_labels": {
-      "enabled": false,
+      "enabled": true,
       "field_name": "country_attribution",
       "party1": "",
       "party2": "",
@@ -311,55 +327,55 @@
     ],
     "party1_patterns": {
       "en": [
-        "\\\\brussian\\\\b",
-        "\\\\brussia\\\\b",
-        "\\\\brf\\\\b",
-        "\\\\brussian[- ]backed\\\\b"
+        "\\brussian\\b",
+        "\\brussia\\b",
+        "\\brf\\b",
+        "\\brussian[- ]backed\\b"
       ],
       "ru": [
-        "\\\\bросси",
-        "\\\\bрусск",
-        "\\\\bрф\\\\b"
+        "\\bросси",
+        "\\bрусск",
+        "\\bрф\\b"
       ],
       "uk": [
-        "\\\\bросі",
-        "\\\\bросійськ",
-        "\\\\bрф\\\\b"
+        "\\bросі",
+        "\\bросійськ",
+        "\\bрф\\b"
       ]
     },
     "party2_patterns": {
       "en": [
-        "\\\\bukrain",
-        "\\\\bukraine\\\\b"
+        "\\bukrain",
+        "\\bukraine\\b"
       ],
       "ru": [
-        "\\\\bукраин",
-        "\\\\bукраинец",
-        "\\\\bукраинка"
+        "\\bукраин",
+        "\\bукраинец",
+        "\\bукраинка"
       ],
       "uk": [
-        "\\\\bукраїн",
-        "\\\\bукраїнець",
-        "\\\\bукраїнка"
+        "\\bукраїн",
+        "\\bукраїнець",
+        "\\bукраїнка"
       ]
     },
     "other_patterns": {
       "en": [
-        "\\\\bamerican\\\\b",
-        "\\\\bunited states\\\\b",
-        "\\\\bu\\\\.?s\\\\.?\\\\b",
-        "\\\\bchinese\\\\b",
-        "\\\\bchina\\\\b"
+        "\\bamerican\\b",
+        "\\bunited states\\b",
+        "\\bu\\.?s\\.?\\b",
+        "\\bchinese\\b",
+        "\\bchina\\b"
       ],
       "ru": [
-        "\\\\bамерикан",
-        "\\\\bкита",
-        "\\\\bкнр\\\\b"
+        "\\bамерикан",
+        "\\bкита",
+        "\\bкнр\\b"
       ],
       "uk": [
-        "\\\\bамерикан",
-        "\\\\bкита",
-        "\\\\bкнр\\\\b"
+        "\\bамерикан",
+        "\\bкита",
+        "\\bкнр\\b"
       ]
     }
   }

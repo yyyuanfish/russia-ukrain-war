@@ -11,6 +11,7 @@ Main purpose:
 
 What this module provides:
 - MediaWiki API wrappers with retry/backoff.
+- Optional shared logger hook (`set_logger`) so API requests/progress can be written to one pipeline log file.
 - Seed URL parsing (language + title extraction).
 - Rendered page HTML retrieval (`action=parse`) and soup parsing.
 - Navbox utilities (select navbox, extract wiki links, title extraction).
@@ -58,6 +59,51 @@ DEFAULT_INSTANCE_OF_HINT_MAP = {
     "policy": {"Q820655", "Q7163", "Q618779", "Q182994"},
     "media_narrative": {"Q17379835", "Q215080"},
 }
+_LOGGER = None
+
+
+def set_logger(logger) -> None:
+    global _LOGGER
+    _LOGGER = logger
+
+
+def _log_info(msg: str) -> None:
+    if _LOGGER:
+        _LOGGER.info(msg)
+    else:
+        print(msg)
+
+
+def _log_warning(msg: str) -> None:
+    if _LOGGER:
+        _LOGGER.warning(msg)
+    else:
+        print(f"WARN: {msg}")
+
+
+def _summarize_params(params: Dict) -> str:
+    keys = [
+        "action",
+        "prop",
+        "list",
+        "page",
+        "titles",
+        "cmtitle",
+        "ppprop",
+        "cmtype",
+    ]
+    parts: List[str] = []
+    for k in keys:
+        if k not in params:
+            continue
+        v = params.get(k)
+        if k == "titles" and isinstance(v, str):
+            titles_count = v.count("|") + 1 if v else 0
+            shown = v[:120] + ("..." if len(v) > 120 else "")
+            parts.append(f"{k}=<{titles_count} titles> {shown}")
+            continue
+        parts.append(f"{k}={v}")
+    return ", ".join(parts)
 
 
 def normalize_qids(vals, default: Optional[Set[str]] = None) -> Set[str]:
@@ -145,6 +191,11 @@ def _mw_api_get(
 
     for attempt in range(retries):
         try:
+            method = "POST" if use_post else "GET"
+            _log_info(
+                f"[wiki_api] {method} {api_url} | "
+                f"attempt={attempt + 1}/{retries} | {_summarize_params(req_params)}"
+            )
             if use_post:
                 r = requests.post(api_url, data=req_params, headers=HEADERS_JSON, timeout=60)
             else:
@@ -153,6 +204,9 @@ def _mw_api_get(
             last_head = r.text[:200]
 
             if r.status_code in (403, 429, 500, 502, 503, 504):
+                _log_warning(
+                    f"[wiki_api] retryable status={r.status_code}, sleeping before retry"
+                )
                 time.sleep(min(60.0, (2 ** attempt) + 0.8))
                 continue
 
@@ -163,6 +217,7 @@ def _mw_api_get(
 
         except Exception as exc:
             last_exc = exc
+            _log_warning(f"[wiki_api] request failed: {exc}")
             time.sleep(min(60.0, (2 ** attempt) + 0.8))
 
     raise RuntimeError(
@@ -179,7 +234,9 @@ def _mw_query_all_pages(
 ) -> List[Dict]:
     out_items: List[Dict] = []
     cont = {}
+    page_idx = 0
     while True:
+        page_idx += 1
         req = dict(params)
         req.update(cont)
         data = _mw_api_get(req, sleep=sleep, api_url=api_url)
@@ -190,6 +247,8 @@ def _mw_query_all_pages(
                 out_items.extend(q["pages"])
             elif isinstance(q.get("categorymembers"), list):
                 out_items.extend(q["categorymembers"])
+
+        _log_info(f"[wiki_api] page_chunk={page_idx} cumulative_items={len(out_items)}")
 
         if max_items and len(out_items) >= max_items:
             return out_items[:max_items]
@@ -330,12 +389,12 @@ def walk_categories_collect_titles(
                 max_members=(max_members_per_category if max_members_per_category > 0 else None),
             )
         except Exception as exc:
-            print(f"WARN: failed to fetch category '{cat}': {exc}")
+            _log_warning(f"failed to fetch category '{cat}': {exc}")
             continue
 
         if progress_every > 0 and (len(visited_categories) % progress_every == 0):
             pfx = f"{progress_prefix} " if progress_prefix else ""
-            print(
+            _log_info(
                 f"{pfx}progress: visited_categories={len(visited_categories)}, "
                 f"queued={len(agenda)}, titles={len(article_titles)}"
             )
@@ -394,7 +453,7 @@ def soup_from_html(html: str) -> BeautifulSoup:
     try:
         return BeautifulSoup(html, "lxml")
     except Exception:
-        print("Error: lxml parser not available. Please run: pip install lxml")
+        _log_warning("lxml parser not available. Please run: pip install lxml")
         sys.exit(1)
 
 
@@ -503,6 +562,7 @@ def titles_from_urls(urls: Set[str]) -> List[str]:
 def wikipedia_titles_to_qids(titles: List[str], lang: str = "en", batch: int = 40, sleep: float = 0.2) -> Dict[str, str]:
     qmap: Dict[str, str] = {}
     api_url = wiki_api_for_lang(lang)
+    _log_info(f"[titles_to_qids] lang={lang} titles={len(titles)} batch={batch}")
 
     def resolve_chunk(chunk: List[str]) -> Dict[str, str]:
         if not chunk:
@@ -523,6 +583,7 @@ def wikipedia_titles_to_qids(titles: List[str], lang: str = "en", batch: int = 4
         except RuntimeError as exc:
             msg = str(exc)
             if len(chunk) > 1 and (" 414 " in f" {msg} " or " 413 " in f" {msg} " or "Too Long" in msg):
+                _log_warning(f"[titles_to_qids] split_chunk_due_to_uri_limit size={len(chunk)}")
                 mid = len(chunk) // 2
                 out = {}
                 out.update(resolve_chunk(chunk[:mid]))
@@ -541,5 +602,10 @@ def wikipedia_titles_to_qids(titles: List[str], lang: str = "en", batch: int = 4
 
     for i in range(0, len(titles), batch):
         chunk = titles[i : i + batch]
+        _log_info(
+            f"[titles_to_qids] lang={lang} chunk={(i // batch) + 1}/"
+            f"{((len(titles) - 1) // batch) + 1 if titles else 0} size={len(chunk)}"
+        )
         qmap.update(resolve_chunk(chunk))
+    _log_info(f"[titles_to_qids] lang={lang} resolved={len(qmap)}/{len(titles)}")
     return qmap

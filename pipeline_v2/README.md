@@ -84,7 +84,7 @@ Optional sections are also supported:
 - `harvest_hints` (`instance_of_map` for source hint labels)
 - `visualization` (`language_order`, `attribution_display_names`, `source_display_names`, `entity_files`, `venn`)
 - `classification` (`other_threshold`, `report_label_lang`, `attribution_properties`, `place_country_resolution`, `other_country_hints`, `other_country_text_map`, `party1_patterns`, `party2_patterns`, `other_patterns`, `output_labels`, `legacy_output`)
-- `pipeline` (`run`, `paths`) for one-command pipeline execution
+- `pipeline` (`run`, `paths`, `logging`) for one-command pipeline execution and shared logs
 
 Category expansion depth is config-first:
 - default is `categories.depth = 1`
@@ -149,15 +149,15 @@ Alias enrichment is configurable too:
 - `wikidata.aliases.max_total_per_qid`
 - `wikidata.aliases.max_per_lang`
 
-### Optional named output labels in classification
+### Named output labels in classification
 
 `attribution.py` always writes the generic label field:
 - `attribution` in `{party1, party2, mixed, other}`
 
-You can additionally emit country-named labels via config:
-- `classification.output_labels.enabled = true`
-- choose field name with `classification.output_labels.field_name`
-- map names with `party1` / `party2` / `mixed` / `other`
+By default it also writes country-named labels via config:
+- `classification.output_labels.enabled = true` (default in template config)
+- field name is `classification.output_labels.field_name` (default: `country_attribution`)
+- `party1`/`party2` names are taken from `conflicting_parties.party1.label` and `conflicting_parties.party2.label` unless overridden
 
 For backward compatibility with old pipelines, you can also enable:
 - `classification.legacy_output.enabled = true`
@@ -202,6 +202,38 @@ python run_pipeline.py --config config.json
 - `pipeline.run` to enable/disable each step
 - `pipeline.paths` to set output paths
 - `visualization.entity_files` to map source filenames inside `entities_folder`
+- `pipeline.logging` to write one shared step/query log file
+
+### Logging (harvest transparency)
+
+The three harvesters can now write a shared log file that includes:
+- step start/end messages
+- SPARQL queries used
+- MediaWiki API request parameters and pagination progress
+- per-step output counts (titles, resolved QIDs, batches, final records)
+
+Default config:
+
+```json
+"pipeline": {
+  "logging": {
+    "enabled": true,
+    "file": "data/logs/harvest.log",
+    "append": true,
+    "log_queries": true,
+    "query_max_chars": 12000
+  }
+}
+```
+
+Override the log path for a single harvester run:
+
+```bash
+python harvest_categories.py \
+  --config config.json \
+  --output data/entities/categories_entities.jsonl \
+  --log-file data/logs/categories_debug.log
+```
 
 ### Option B: Run each step manually
 
@@ -230,6 +262,7 @@ python attribution.py \
   --config config.json \
   --entities_folder data/entities \
   --output data/classified_entities.jsonl \
+  --attribution-jsonl data/attribution_scores.jsonl \
   --report data/classified_report.json
 
 python visualization.py \
@@ -266,6 +299,7 @@ python attribution.py \
   --config config.json \
   --entities_folder data/entities \
   --output data/classified_entities.jsonl \
+  --attribution-jsonl data/attribution_scores.jsonl \
   --report data/classified_report.json
 
 python visualization.py \
@@ -308,6 +342,7 @@ python attribution.py \
   --config config.json \
   --entities_folder data/entities \
   --output data/classified_entities.jsonl \
+  --attribution-jsonl data/attribution_scores.jsonl \
   --report data/classified_report.json
 ```
 
@@ -322,18 +357,59 @@ python visualization.py \
 ```
 
 `visualization.py` display names are config-driven:
-- `party1`/`party2` bars default to `languages.party1`/`languages.party2` text (for example, `ru` and `uk`)
+- `party1`/`party2` bars default to `conflicting_parties.party1.label`/`conflicting_parties.party2.label`
+- if those labels are missing, it falls back to `languages.party1`/`languages.party2`
 - language coverage chart uses `visualization.language_order` (default: `languages.all`)
 - source JSONL filenames can be configured in `visualization.entity_files`
 - you can override labels with:
   - `visualization.attribution_display_names`
   - `visualization.source_display_names`
 
+Additional hint-analysis outputs are generated automatically:
+- Global matrix outputs (all sources merged):
+  - `data/visualization/hint_attribution_table.csv` (column-normalized)
+  - `data/visualization/hint_attribution_table_row_normalized.csv` (row-normalized)
+  - `data/visualization/hint_attribution_heatmap.png` (column-normalized)
+  - `data/visualization/hint_attribution_heatmap_row_normalized.png` (row-normalized)
+- Source-stratified matrix outputs (same logic, per source):
+  - `data/visualization/hint_attribution_table_wikidata.csv`
+  - `data/visualization/hint_attribution_table_wikidata_row_normalized.csv`
+  - `data/visualization/hint_attribution_table_navboxes.csv`
+  - `data/visualization/hint_attribution_table_navboxes_row_normalized.csv`
+  - `data/visualization/hint_attribution_table_categories.csv`
+  - `data/visualization/hint_attribution_table_categories_row_normalized.csv`
+  - `data/visualization/hint_attribution_heatmap_wikidata.png`
+  - `data/visualization/hint_attribution_heatmap_wikidata_row_normalized.png`
+  - `data/visualization/hint_attribution_heatmap_navboxes.png`
+  - `data/visualization/hint_attribution_heatmap_navboxes_row_normalized.png`
+  - `data/visualization/hint_attribution_heatmap_categories.png`
+  - `data/visualization/hint_attribution_heatmap_categories_row_normalized.png`
+- Unknown-hint diagnostics:
+  - `data/visualization/unknown_hint_reason_counts.png`
+  - report fields under `classified.unknown_hint_analysis`
+
+How to read the two normalization modes:
+- Column-normalized (`...heatmap.png` / `...table.csv`):
+  - question answered: "inside this hint type, how are attributions distributed?"
+  - each cell percent is `% within hint column`
+- Row-normalized (`..._row_normalized...`):
+  - question answered: "inside this attribution label, how are hints distributed?"
+  - each cell percent is `% within attribution row`
+
+Why each source has two figures:
+- they answer two different questions (hint purity vs label composition), so both are kept intentionally.
+
+Hint extraction method:
+- visualization uses an `effective_hint` per entity from `source.hint` and `_sources[*].hint`
+- if multiple hints exist, it prefers the most frequent non-`unknown` hint
+- this is reported in `visualization_report.json` under:
+  - `classified.hint_attribution.hint_extraction`
+
 ### 6) Quick output checks
 
 ```bash
 ls -lh data/entities
-ls -lh data/classified_entities.jsonl data/classified_report.json
+ls -lh data/classified_entities.jsonl data/attribution_scores.jsonl data/classified_report.json
 ls -lh data/visualization
 ```
 
@@ -365,6 +441,24 @@ If `--report` is enabled, the report includes:
 - each entry has `label` + `label_lang` (configured by `classification.report_label_lang`)
 - `other_country_unknown`: how many `other` entities had no country guess
 
+### Attribution audit JSONL (new)
+
+`attribution.py` can now also write a compact per-entity scoring file:
+- `data/attribution_scores.jsonl`
+
+Each row includes:
+- `qid`
+- `attribution`
+- `scores` / `structured_scores` / `text_scores`
+- `hits` (evidence snippets)
+- `other_country_guess`
+- source summary (`source_type`, `source_hint`, `collection_paths`)
+- optional country-named label field (for example `country_attribution`)
+
+In `classified_entities.jsonl`, each entity also has:
+- `pre_label_scores`: scores computed before final label decision
+  (`party1`, `party2`, `other`, plus `structured` and `text` subtotals)
+
 ## Debug / tuning
 
 - Category harvest too broad:
@@ -377,6 +471,28 @@ If `--report` is enabled, the report includes:
 - Attribution too many `mixed`:
   - add stronger `party1_patterns` / `party2_patterns` in `config.json`
   - expand `classification.attribution_properties` / `classification.place_country_resolution.place_properties`
+
+### Wikidata alias stage: progress and limits
+
+During `harvest_wikidata.py`, you may see logs like:
+- `[wikidata] alias_progress=1600/2723`
+- `[sparql] failed attempt=1/3 tag=wikidata.aliases.Q...: HTTP Error 502`
+
+Meaning:
+- `alias_progress=X/N`:
+  - `N` is the number of harvested QIDs to process for alias enrichment (not alias count).
+  - the script queries aliases per QID, so this step can be long when `N` is large.
+- `failed attempt=1/3`:
+  - transient endpoint/network issue; the script retries automatically.
+  - if retries still fail for a QID, aliases for that QID stay empty and the pipeline continues.
+
+Alias caps (config-driven):
+- `wikidata.aliases.max_total_per_qid`: cap total aliases saved per QID across all languages.
+- `wikidata.aliases.max_per_lang`: cap aliases per language per QID.
+
+Important:
+- these caps limit aliases stored per entity, but do not reduce how many QIDs are processed.
+- to speed up significantly, reduce harvested QID count (`wikidata.limit`, query scope) or disable alias enrichment (`wikidata.aliases.enabled=false` or `wikidata.no_aliases=true`).
 
 ## Why counts can drop vs legacy RU-UA runs
 

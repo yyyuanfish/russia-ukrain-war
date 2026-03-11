@@ -1,0 +1,973 @@
+{
+  "total_changes": 703,
+  "from_to": {
+    "other->mixed": 217,
+    "other->party2": 160,
+    "party2->mixed": 222,
+    "other->party1": 72,
+    "party1->mixed": 32
+  },
+  "sample": [
+    {
+      "qid": "Q1000658",
+      "old": "other",
+      "new": "mixed",
+      "structured": {
+        "party1": 0,
+        "party2": 0,
+        "other": 0
+      },
+      "text": {
+        "party1": 2,
+        "party2": 3,
+        "other": 1
+      },
+      "hits": [
+        "text:en:party1:\\brussia\\b",
+        "text:en:party2:\\bukrain",
+        "text:en:party2:\\bukraine\\b",
+        "text:en:other:\\bunited states\\b",
+        "text:uk:party1:\\bросі",
+        "text:uk:party2:\\bукраїн"
+      ],
+      "label_en": "Budapest Memorandum",
+      "desc_en": "international treaty of Ukraine, the United States, Russia, and the United Kingdom"
+    },
+    {
+      "qid": "Q100605773",
+      "old": "other",
+      "new": "party2",
+      "structured": {
+        "party1": 0,
+        "party2": 0,
+        "other": 0
+      },
+      "text": {
+        "party1": 0,
+        "party2": 2,
+        "other": 0
+      },
+      "hits": [
+        "text:en:party2:\\bukrain",
+        "text:uk:party2:\\bукраїн"
+      ],
+      "label_en": null,
+      "desc_en": "Ukrainian writer"
+    },
+    {
+      "qid": "Q100708500",
+      "old": "party2",
+      "new": "mixed",
+      "structured": {
+        "party1": 0,
+        "party2": 6,
+        "other": 0
+      },
+      "text": {
+        "party1": 2,
+        "party2": 2,
+        "other": 0
+      },
+      "hits": [
+        "text:en:party2:\\bukrain",
+        "text:uk:party1:\\bросі",
+        "text:uk:party1:\\bросійськ",
+        "text:uk:party2:\\bукраїн"
+      ],
+      "label_en": "Mykola Mykytenko",
+      "desc_en": "Ukrainian military personnel (1971-2020)"
+    },
+    {
+      "qid": "Q101246204",
+      "old": "party2",
+      "new": "mixed",
+      "structured": {
+        "party1": 0,
+        "party2": 6,
+        "other": 0
+      },
+      "text": {
+        "party1": 2,
+        "party2": 2,
+        "other": 0
+      },
+      "hits": [
+        "text:en:party2:\\bukrain",
+        "text:uk:party1:\\bросі",
+        "text:uk:party1:\\bросійськ",
+        "text:uk:party2:\\bукраїн"
+      ],
+      "label_en": "Vitalii Hrytsyshyn",
+      "desc_en": "Ukrainian military personnel"
+    },
+    {
+      "qid": "Q101334747",
+      "old": "party2",
+      "new": "mixed",
+      "structured": {
+        "party1": 0,
+        "party2": 6,
+        "other": 0
+      },
+      "text": {
+        "party1": 2,
+        "party2": 2,
+        "other": 0
+      },
+      "hits": [
+        "text:en:party2:\\bukrain",
+        "text:uk:party1:\\bросі",
+        "text:uk:party1:\\bросійськ",
+        "text:uk:party2:\\bукраїн"
+      ],
+      "label_en": "Artem Bondarenko",
+      "desc_en": "Ukrainian military personnel"
+    },
+    {
+      "qid": "Q102047145",
+      "old": "party2",
+      "new": "mixed",
+      "structured": {
+        "party1": 0,
+        "party2": 6,
+        "other": 0
+      },
+      "text": {
+        "party1": 2,
+        "party2": 2,
+        "other": 0
+      },
+      "hits": [
+        "text:en:party2:\\bukrain",
+        "text:uk:party1:\\bросі",
+        "text:uk:party1:\\bросійськ",
+        "text:uk:party2:\\bукраїн"
+      ],
+      "label_en": null,
+      "desc_en": "Ukrainian military personnel"
+    },
+    {
+      "qid": "Q102345936",
+      "old": "party2",
+      "new": "mixed",
+      "structured": {
+        "party1": 0,
+        "party2": 4,
+        "other": 0
+      },
+      "text": {
+        "party1": 2,
+        "party2": 2,
+        "other": 0
+      },
+      "hits": [
+        "text:en:party2:\\bukrain",
+        "text:uk:party1:\\bросі",
+        "text:uk:party1:\\bросійськ",
+        "text:uk:party2:\\bукраїн"
+      ],
+      "label_en": "Yuriy Kapustyak",
+      "desc_en": "Ukrainian military personnel"
+    },
+    {
+      "qid": "Q104379781",
+      "old": "other",
+      "new": "party1",
+      "structured": {
+        "party1": 0,
+        "party2": 0,
+        "other": 0
+      },
+      "text": {
+        "party1": 1,
+        "party2": 0,
+        "other": 0
+      },
+      "hits": [
+        "text:uk:party1:\\bросі"
+      ],
+      "label_en": "MV Namura Queen",
+      "desc_en": "panamax bulk carrier cargo ship built in 2020"
+    },
+    {
+      "qid": "Q104439248",
+      "old": "party2",
+      "new": "mixed",
+      "structured": {
+        "party1": 0,
+        "party2": 8,
+        "other": 0
+      },
+      "text": {
+        "party1": 2,
+        "party2": 2,
+        "other": 0
+      },
+      "hits": [
+        "text:en:party2:\\bukrain",
+        "text:uk:party1:\\bросі",
+        "text:uk:party1:\\bросійськ",
+        "text:uk:party2:\\bукраїн"
+      ],
+      "label_en": "Vyacheslav Minkin",
+      "desc_en": "Ukrainian military personnel"
+    },
+    {
+      "qid": "Q104869206",
+      "old": "party2",
+      "new": "mixed",
+      "structured": {
+        "party1": 0,
+        "party2": 8,
+        "other": 0
+      },
+      "text": {
+        "party1": 2,
+        "party2": 2,
+        "other": 0
+      },
+      "hits": [
+        "text:en:party2:\\bukrain",
+        "text:uk:party1:\\bросі",
+        "text:uk:party1:\\bросійськ",
+        "text:uk:party2:\\bукраїн"
+      ],
+      "label_en": null,
+      "desc_en": "Ukrainian military personnel"
+    },
+    {
+      "qid": "Q105168580",
+      "old": "party2",
+      "new": "mixed",
+      "structured": {
+        "party1": 0,
+        "party2": 8,
+        "other": 0
+      },
+      "text": {
+        "party1": 2,
+        "party2": 2,
+        "other": 0
+      },
+      "hits": [
+        "text:en:party2:\\bukrain",
+        "text:uk:party1:\\bросі",
+        "text:uk:party1:\\bросійськ",
+        "text:uk:party2:\\bукраїн"
+      ],
+      "label_en": null,
+      "desc_en": "Ukrainian military personnel (1992-2021)"
+    },
+    {
+      "qid": "Q106231683",
+      "old": "party2",
+      "new": "mixed",
+      "structured": {
+        "party1": 0,
+        "party2": 6,
+        "other": 0
+      },
+      "text": {
+        "party1": 1,
+        "party2": 3,
+        "other": 0
+      },
+      "hits": [
+        "text:en:party2:\\bukrain",
+        "text:ru:party2:\\bукраин",
+        "text:uk:party1:\\bрф\\b",
+        "text:uk:party2:\\bукраїн"
+      ],
+      "label_en": "Crimea Platform",
+      "desc_en": "Ukrainian diplomatic initiative aimed at recovering control over Crimea"
+    },
+    {
+      "qid": "Q106394451",
+      "old": "other",
+      "new": "mixed",
+      "structured": {
+        "party1": 0,
+        "party2": 0,
+        "other": 0
+      },
+      "text": {
+        "party1": 1,
+        "party2": 2,
+        "other": 0
+      },
+      "hits": [
+        "text:en:party1:\\brussia\\b",
+        "text:en:party2:\\bukrain",
+        "text:en:party2:\\bukraine\\b"
+      ],
+      "label_en": "Armies of Russia's War in Ukraine",
+      "desc_en": "2019 book by Mark Galeotti"
+    },
+    {
+      "qid": "Q106762232",
+      "old": "other",
+      "new": "party2",
+      "structured": {
+        "party1": 0,
+        "party2": 0,
+        "other": 0
+      },
+      "text": {
+        "party1": 0,
+        "party2": 2,
+        "other": 0
+      },
+      "hits": [
+        "text:ru:party2:\\bукраин",
+        "text:uk:party2:\\bукраїн"
+      ],
+      "label_en": null,
+      "desc_en": null
+    },
+    {
+      "qid": "Q107715931",
+      "old": "other",
+      "new": "mixed",
+      "structured": {
+        "party1": 0,
+        "party2": 0,
+        "other": 0
+      },
+      "text": {
+        "party1": 4,
+        "party2": 4,
+        "other": 0
+      },
+      "hits": [
+        "text:en:party2:\\bukrain",
+        "text:en:party1:\\brussian\\b",
+        "text:ru:party1:\\bрусск",
+        "text:ru:party2:\\bукраин",
+        "text:ru:party1:\\bросси",
+        "text:ru:party2:\\bукраин",
+        "text:uk:party1:\\bросі",
+        "text:uk:party2:\\bукраїн"
+      ],
+      "label_en": "On the historical unity of Russians and Ukrainians",
+      "desc_en": "July 2021 essay by Russian president Vladimir Putin"
+    },
+    {
+      "qid": "Q107740215",
+      "old": "other",
+      "new": "party2",
+      "structured": {
+        "party1": 0,
+        "party2": 0,
+        "other": 0
+      },
+      "text": {
+        "party1": 0,
+        "party2": 1,
+        "other": 0
+      },
+      "hits": [
+        "text:uk:party2:\\bукраїн"
+      ],
+      "label_en": "women in the War in Donbas",
+      "desc_en": null
+    },
+    {
+      "qid": "Q108415960",
+      "old": "other",
+      "new": "party1",
+      "structured": {
+        "party1": 0,
+        "party2": 0,
+        "other": 0
+      },
+      "text": {
+        "party1": 2,
+        "party2": 0,
+        "other": 0
+      },
+      "hits": [
+        "text:en:party1:\\brussian\\b",
+        "text:ru:party1:\\bросси"
+      ],
+      "label_en": "Zapad 2021",
+      "desc_en": "military exercise of the Russian and Belarusian armed forces in the year 2021"
+    },
+    {
+      "qid": "Q110681518",
+      "old": "other",
+      "new": "mixed",
+      "structured": {
+        "party1": 0,
+        "party2": 0,
+        "other": 0
+      },
+      "text": {
+        "party1": 2,
+        "party2": 3,
+        "other": 0
+      },
+      "hits": [
+        "text:en:party2:\\bukrain",
+        "text:en:party2:\\bukrain",
+        "text:uk:party1:\\bросі",
+        "text:uk:party1:\\bросійськ",
+        "text:uk:party2:\\bукраїн"
+      ],
+      "label_en": "reactions to 2021–2022 Russo-Ukrainian crisis",
+      "desc_en": "reactions to the 2021–2022 Russo-Ukrainian war"
+    },
+    {
+      "qid": "Q110713212",
+      "old": "party2",
+      "new": "mixed",
+      "structured": {
+        "party1": 0,
+        "party2": 4,
+        "other": 0
+      },
+      "text": {
+        "party1": 2,
+        "party2": 2,
+        "other": 0
+      },
+      "hits": [
+        "text:en:party2:\\bukrain",
+        "text:ru:party2:\\bукраин",
+        "text:uk:party1:\\bросі",
+        "text:uk:party1:\\bросійськ"
+      ],
+      "label_en": "Wagnergate",
+      "desc_en": "special operation of the Ukrainian special services"
+    },
+    {
+      "qid": "Q110791984",
+      "old": "other",
+      "new": "party2",
+      "structured": {
+        "party1": 0,
+        "party2": 0,
+        "other": 0
+      },
+      "text": {
+        "party1": 0,
+        "party2": 2,
+        "other": 0
+      },
+      "hits": [
+        "text:en:party2:\\bukrain",
+        "text:en:party2:\\bukraine\\b"
+      ],
+      "label_en": "The Framing of the \"Ukraine crisis\" in German political talk shows 2013- 2014 (data set)",
+      "desc_en": "Data set (published in 2021)"
+    },
+    {
+      "qid": "Q110955670",
+      "old": "party1",
+      "new": "mixed",
+      "structured": {
+        "party1": 8,
+        "party2": 0,
+        "other": 0
+      },
+      "text": {
+        "party1": 2,
+        "party2": 2,
+        "other": 0
+      },
+      "hits": [
+        "text:en:party1:\\brussia\\b",
+        "text:en:party2:\\bukrain",
+        "text:en:party2:\\bukraine\\b",
+        "text:ru:party1:\\bросси"
+      ],
+      "label_en": "2022 evacuation of the Donetsk People's Republic and the Luhansk People's Republic",
+      "desc_en": "Mass movement from Ukraine to Russia"
+    },
+    {
+      "qid": "Q110993803",
+      "old": "party1",
+      "new": "mixed",
+      "structured": {
+        "party1": 2,
+        "party2": 0,
+        "other": 0
+      },
+      "text": {
+        "party1": 1,
+        "party2": 2,
+        "other": 0
+      },
+      "hits": [
+        "text:en:party2:\\bukrain",
+        "text:en:party2:\\bukraine\\b",
+        "text:ru:party1:\\bросси"
+      ],
+      "label_en": "Address concerning the events in Ukraine",
+      "desc_en": "21 February 2022 speech by Vladimir Putin"
+    },
+    {
+      "qid": "Q110995514",
+      "old": "other",
+      "new": "mixed",
+      "structured": {
+        "party1": 0,
+        "party2": 0,
+        "other": 0
+      },
+      "text": {
+        "party1": 7,
+        "party2": 6,
+        "other": 0
+      },
+      "hits": [
+        "text:en:party1:\\brussian\\b",
+        "text:en:party2:\\bukrain",
+        "text:en:party2:\\bukraine\\b",
+        "text:en:party1:\\brussian\\b",
+        "text:en:party2:\\bukrain",
+        "text:en:party2:\\bukraine\\b",
+        "text:ru:party1:\\bрусск",
+        "text:ru:party2:\\bукраин"
+      ],
+      "label_en": "disinformation in the Russian invasion of Ukraine",
+      "desc_en": "disinformation concerning the 2022 Russian invasion of Ukraine"
+    },
+    {
+      "qid": "Q111010500",
+      "old": "party1",
+      "new": "mixed",
+      "structured": {
+        "party1": 10,
+        "party2": 0,
+        "other": 0
+      },
+      "text": {
+        "party1": 2,
+        "party2": 3,
+        "other": 0
+      },
+      "hits": [
+        "text:en:party2:\\bukrain",
+        "text:en:party2:\\bukraine\\b",
+        "text:ru:party1:\\bросси",
+        "text:uk:party1:\\bрф\\b",
+        "text:uk:party2:\\bукраїн"
+      ],
+      "label_en": "Putin's invasion of Ukraine speech",
+      "desc_en": "24 February 2022 speech by Vladimir Putin"
+    },
+    {
+      "qid": "Q111012213",
+      "old": "party2",
+      "new": "mixed",
+      "structured": {
+        "party1": 0,
+        "party2": 4,
+        "other": 0
+      },
+      "text": {
+        "party1": 5,
+        "party2": 5,
+        "other": 0
+      },
+      "hits": [
+        "text:en:party1:\\brussian\\b",
+        "text:en:party2:\\bukrain",
+        "text:en:party2:\\bukraine\\b",
+        "text:ru:party1:\\bросси",
+        "text:ru:party2:\\bукраин",
+        "text:ru:party1:\\bросси",
+        "text:ru:party2:\\bукраин",
+        "text:uk:party1:\\bросі"
+      ],
+      "label_en": "timeline of the Russian invasion of Ukraine",
+      "desc_en": "Wikimedia timeline"
+    },
+    {
+      "qid": "Q111012672",
+      "old": "other",
+      "new": "mixed",
+      "structured": {
+        "party1": 0,
+        "party2": 0,
+        "other": 0
+      },
+      "text": {
+        "party1": 4,
+        "party2": 4,
+        "other": 0
+      },
+      "hits": [
+        "text:en:party1:\\brussian\\b",
+        "text:en:party2:\\bukrain",
+        "text:en:party2:\\bukraine\\b",
+        "text:ru:party1:\\bросси",
+        "text:ru:party2:\\bукраин",
+        "text:uk:party1:\\bросі",
+        "text:uk:party1:\\bросійськ",
+        "text:uk:party2:\\bукраїн"
+      ],
+      "label_en": "reactions to the Russian invasion of Ukraine",
+      "desc_en": "international reactions"
+    },
+    {
+      "qid": "Q111013267",
+      "old": "party2",
+      "new": "mixed",
+      "structured": {
+        "party1": 0,
+        "party2": 6,
+        "other": 0
+      },
+      "text": {
+        "party1": 2,
+        "party2": 3,
+        "other": 0
+      },
+      "hits": [
+        "text:en:party1:\\brussian\\b",
+        "text:en:party2:\\bukrain",
+        "text:en:party2:\\bukraine\\b",
+        "text:ru:party1:\\bросси",
+        "text:ru:party2:\\bукраин"
+      ],
+      "label_en": "Battle of Antonov Airport",
+      "desc_en": "battle in the 2022 Russian invasion of Ukraine"
+    },
+    {
+      "qid": "Q111013514",
+      "old": "party2",
+      "new": "mixed",
+      "structured": {
+        "party1": 0,
+        "party2": 2,
+        "other": 0
+      },
+      "text": {
+        "party1": 2,
+        "party2": 3,
+        "other": 0
+      },
+      "hits": [
+        "text:en:party1:\\brussian\\b",
+        "text:en:party2:\\bukrain",
+        "text:en:party2:\\bukraine\\b",
+        "text:ru:party1:\\bросси",
+        "text:ru:party2:\\bукраин"
+      ],
+      "label_en": "Battle of Sumy",
+      "desc_en": "battle in the 2022 Russian invasion of Ukraine"
+    },
+    {
+      "qid": "Q111013851",
+      "old": "party2",
+      "new": "mixed",
+      "structured": {
+        "party1": 0,
+        "party2": 12,
+        "other": 0
+      },
+      "text": {
+        "party1": 5,
+        "party2": 6,
+        "other": 0
+      },
+      "hits": [
+        "text:en:party2:\\bukrain",
+        "text:en:party1:\\brussian\\b",
+        "text:en:party2:\\bukrain",
+        "text:en:party2:\\bukraine\\b",
+        "text:ru:party2:\\bукраин",
+        "text:uk:party1:\\bросі",
+        "text:uk:party1:\\bросійськ",
+        "text:uk:party2:\\bукраїн"
+      ],
+      "label_en": "southern front of the Russo-Ukrainian war",
+      "desc_en": "military offensive in the 2022 Russian invasion of Ukraine"
+    },
+    {
+      "qid": "Q111013915",
+      "old": "party2",
+      "new": "mixed",
+      "structured": {
+        "party1": 0,
+        "party2": 6,
+        "other": 0
+      },
+      "text": {
+        "party1": 4,
+        "party2": 4,
+        "other": 0
+      },
+      "hits": [
+        "text:en:party1:\\brussian\\b",
+        "text:en:party2:\\bukrain",
+        "text:en:party2:\\bukraine\\b",
+        "text:ru:party1:\\bросси",
+        "text:ru:party2:\\bукраин",
+        "text:uk:party1:\\bросі",
+        "text:uk:party1:\\bросійськ",
+        "text:uk:party2:\\bукраїн"
+      ],
+      "label_en": "Siege of Chernihiv",
+      "desc_en": "battle in the 2022 Russian invasion of Ukraine"
+    },
+    {
+      "qid": "Q111014380",
+      "old": "party2",
+      "new": "mixed",
+      "structured": {
+        "party1": 0,
+        "party2": 6,
+        "other": 0
+      },
+      "text": {
+        "party1": 2,
+        "party2": 3,
+        "other": 0
+      },
+      "hits": [
+        "text:en:party1:\\brussian\\b",
+        "text:en:party2:\\bukrain",
+        "text:en:party2:\\bukraine\\b",
+        "text:ru:party1:\\bросси",
+        "text:ru:party2:\\bукраин"
+      ],
+      "label_en": "Battle of Kharkiv",
+      "desc_en": "battle in the 2022 Russian invasion of Ukraine"
+    },
+    {
+      "qid": "Q111014904",
+      "old": "party2",
+      "new": "mixed",
+      "structured": {
+        "party1": 0,
+        "party2": 8,
+        "other": 0
+      },
+      "text": {
+        "party1": 3,
+        "party2": 2,
+        "other": 0
+      },
+      "hits": [
+        "text:en:party1:\\brussian\\b",
+        "text:en:party2:\\bukrain",
+        "text:en:party2:\\bukraine\\b",
+        "text:ru:party1:\\bрф\\b",
+        "text:uk:party1:\\bрф\\b"
+      ],
+      "label_en": "Battle of Kherson",
+      "desc_en": "battle in the 2022 Russian invasion of Ukraine"
+    },
+    {
+      "qid": "Q111015252",
+      "old": "other",
+      "new": "mixed",
+      "structured": {
+        "party1": 0,
+        "party2": 0,
+        "other": 0
+      },
+      "text": {
+        "party1": 4,
+        "party2": 4,
+        "other": 0
+      },
+      "hits": [
+        "text:en:party1:\\brussian\\b",
+        "text:en:party2:\\bukrain",
+        "text:en:party2:\\bukraine\\b",
+        "text:ru:party1:\\bросси",
+        "text:ru:party2:\\bукраин",
+        "text:uk:party1:\\bросі",
+        "text:uk:party1:\\bросійськ",
+        "text:uk:party2:\\bукраїн"
+      ],
+      "label_en": "Battle of Kyiv",
+      "desc_en": "episode in the 2022 Russian invasion of Ukraine"
+    },
+    {
+      "qid": "Q111015277",
+      "old": "party1",
+      "new": "mixed",
+      "structured": {
+        "party1": 4,
+        "party2": 0,
+        "other": 0
+      },
+      "text": {
+        "party1": 8,
+        "party2": 4,
+        "other": 0
+      },
+      "hits": [
+        "text:en:party1:\\brussia\\b",
+        "text:en:party1:\\brussian\\b",
+        "text:en:party1:\\brussia\\b",
+        "text:en:party2:\\bukrain",
+        "text:en:party2:\\bukraine\\b",
+        "text:ru:party1:\\bросси",
+        "text:ru:party1:\\bросси",
+        "text:ru:party2:\\bукраин"
+      ],
+      "label_en": "anti-war protests in Russia",
+      "desc_en": "protests in Russia opposing the Russian invasion of Ukraine"
+    },
+    {
+      "qid": "Q111016486",
+      "old": "other",
+      "new": "mixed",
+      "structured": {
+        "party1": 0,
+        "party2": 0,
+        "other": 0
+      },
+      "text": {
+        "party1": 2,
+        "party2": 3,
+        "other": 0
+      },
+      "hits": [
+        "text:en:party2:\\bukrain",
+        "text:ru:party1:\\bросси",
+        "text:ru:party2:\\bукраин",
+        "text:uk:party1:\\bросі",
+        "text:uk:party2:\\bукраїн"
+      ],
+      "label_en": "list of military engagements during the Russo-Ukrainian war",
+      "desc_en": "Wikimedia list article"
+    },
+    {
+      "qid": "Q111016743",
+      "old": "other",
+      "new": "mixed",
+      "structured": {
+        "party1": 0,
+        "party2": 0,
+        "other": 0
+      },
+      "text": {
+        "party1": 2,
+        "party2": 3,
+        "other": 0
+      },
+      "hits": [
+        "text:en:party2:\\bukrain",
+        "text:ru:party1:\\bросси",
+        "text:ru:party2:\\bукраин",
+        "text:uk:party1:\\bросі",
+        "text:uk:party2:\\bукраїн"
+      ],
+      "label_en": "Russo-Ukrainian war (2022–present) order of battle",
+      "desc_en": "order of battle of the military forces engaged in the war"
+    },
+    {
+      "qid": "Q111017095",
+      "old": "party2",
+      "new": "mixed",
+      "structured": {
+        "party1": 0,
+        "party2": 8,
+        "other": 0
+      },
+      "text": {
+        "party1": 4,
+        "party2": 4,
+        "other": 0
+      },
+      "hits": [
+        "text:en:party1:\\brussian\\b",
+        "text:en:party2:\\bukrain",
+        "text:en:party2:\\bukraine\\b",
+        "text:ru:party1:\\bросси",
+        "text:ru:party2:\\bукраин",
+        "text:uk:party1:\\bросі",
+        "text:uk:party1:\\bросійськ",
+        "text:uk:party2:\\bукраїн"
+      ],
+      "label_en": "Capture of Melitopol",
+      "desc_en": "military engagement in the Russian invasion of Ukraine"
+    },
+    {
+      "qid": "Q111017689",
+      "old": "other",
+      "new": "mixed",
+      "structured": {
+        "party1": 0,
+        "party2": 0,
+        "other": 0
+      },
+      "text": {
+        "party1": 3,
+        "party2": 6,
+        "other": 0
+      },
+      "hits": [
+        "text:en:party2:\\bukrain",
+        "text:en:party2:\\bukrain",
+        "text:en:party2:\\bukraine\\b",
+        "text:ru:party1:\\bросси",
+        "text:ru:party2:\\bукраин",
+        "text:ru:party1:\\bросси",
+        "text:ru:party2:\\bукраин",
+        "text:uk:party1:\\bросі"
+      ],
+      "label_en": "territorial control during the Russo-Ukrainian war",
+      "desc_en": "control of cities and towns of Ukraine during the Russo-Ukrainian War"
+    },
+    {
+      "qid": "Q111017791",
+      "old": "party2",
+      "new": "mixed",
+      "structured": {
+        "party1": 0,
+        "party2": 6,
+        "other": 0
+      },
+      "text": {
+        "party1": 3,
+        "party2": 4,
+        "other": 0
+      },
+      "hits": [
+        "text:en:party1:\\brussian\\b",
+        "text:en:party2:\\bukrain",
+        "text:en:party2:\\bukraine\\b",
+        "text:ru:party1:\\bросси",
+        "text:ru:party2:\\bукраин",
+        "text:uk:party1:\\bросі",
+        "text:uk:party2:\\bукраїн"
+      ],
+      "label_en": "Siege of Mariupol",
+      "desc_en": "battle in the 2022 Russian invasion of Ukraine"
+    },
+    {
+      "qid": "Q111017926",
+      "old": "other",
+      "new": "mixed",
+      "structured": {
+        "party1": 0,
+        "party2": 0,
+        "other": 4
+      },
+      "text": {
+        "party1": 4,
+        "party2": 6,
+        "other": 0
+      },
+      "hits": [
+        "text:en:party1:\\brussian\\b",
+        "text:en:party2:\\bukrain",
+        "text:en:party2:\\bukraine\\b",
+        "text:en:party1:\\brussia\\b",
+        "text:en:party2:\\bukrain",
+        "text:en:party2:\\bukraine\\b",
+        "text:ru:party1:\\bросси",
+        "text:ru:party2:\\bукраин"
+      ],
+      "label_en": "Belarusian involvement in the Russian invasion of Ukraine",
+      "desc_en": "response of Belarus to Russia-Ukraine War"
+    }
+  ]
+}

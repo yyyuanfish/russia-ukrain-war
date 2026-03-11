@@ -23,6 +23,9 @@ Input:
 Output:
 - --output: classified JSONL
   (recommended: `data/classified_entities.jsonl`).
+- --attribution-jsonl: optional attribution-audit JSONL containing
+  per-entity scores + final decision in compact form
+  (recommended: `data/attribution_scores.jsonl`).
 - --report: optional compact report JSON
   (recommended: `data/classified_report.json`).
 
@@ -31,6 +34,7 @@ How to run:
     --config config.json \
     --entities_folder data/entities \
     --output data/classified_entities.jsonl \
+    --attribution-jsonl data/attribution_scores.jsonl \
     --report data/classified_report.json
 
 Pipeline step:
@@ -146,17 +150,17 @@ def _resolve_output_label_config(cfg: dict, ccfg: dict, key: str, default_enable
     p1_default = p1.get("label") if isinstance(p1.get("label"), str) and p1.get("label").strip() else "party1"
     p2_default = p2.get("label") if isinstance(p2.get("label"), str) and p2.get("label").strip() else "party2"
 
+    def _pick_label(raw_val, fallback: str) -> str:
+        if isinstance(raw_val, str) and raw_val.strip():
+            return raw_val.strip()
+        return fallback
+
     label_map = {
-        "party1": out_cfg.get("party1", p1_default),
-        "party2": out_cfg.get("party2", p2_default),
-        "mixed": out_cfg.get("mixed", "mixed"),
-        "other": out_cfg.get("other", "other"),
+        "party1": _pick_label(out_cfg.get("party1"), p1_default),
+        "party2": _pick_label(out_cfg.get("party2"), p2_default),
+        "mixed": _pick_label(out_cfg.get("mixed"), "mixed"),
+        "other": _pick_label(out_cfg.get("other"), "other"),
     }
-    for k, v in list(label_map.items()):
-        if not isinstance(v, str) or not v.strip():
-            label_map[k] = k
-        else:
-            label_map[k] = v.strip()
 
     return {
         "enabled": enabled,
@@ -545,6 +549,7 @@ def main() -> None:
     ap.add_argument("--config", required=True, help="Path to config.json")
     ap.add_argument("--entities_folder", required=True, help="Folder containing *_entities.jsonl")
     ap.add_argument("--output", required=True, help="Output classified JSONL")
+    ap.add_argument("--attribution-jsonl", default=None, help="Optional compact attribution audit JSONL output")
     ap.add_argument("--report", default=None, help="Optional report JSON path")
     ap.add_argument("--other-threshold", type=int, default=None, help="Override other threshold")
     args = ap.parse_args()
@@ -610,7 +615,7 @@ def main() -> None:
         cfg=cfg,
         ccfg=ccfg,
         key="output_labels",
-        default_enabled=False,
+        default_enabled=True,
         default_field="country_attribution",
     )
     legacy_labels_cfg = _resolve_output_label_config(
@@ -640,6 +645,7 @@ def main() -> None:
     )
 
     counts = Counter()
+    attribution_rows: List[dict] = []
     other_country_counts = Counter()
     other_country_unknown = 0
     for r in merged:
@@ -657,6 +663,16 @@ def main() -> None:
         score1 = s1 + t1
         score2 = s2 + t2
         score_other = so + to
+
+        # Keep pre-decision scores at top level for easier downstream inspection.
+        # This is written before label assignment so users can see evidence scores first.
+        r["pre_label_scores"] = {
+            "party1": score1,
+            "party2": score2,
+            "other": score_other,
+            "structured": {"party1": s1, "party2": s2, "other": so},
+            "text": {"party1": t1, "party2": t2, "other": to},
+        }
 
         label = decide_label(score1, score2, score_other, other_threshold)
 
@@ -707,11 +723,42 @@ def main() -> None:
             field = legacy_labels_cfg["field_name"]
             r[field] = legacy_labels_cfg["label_map"].get(label, label)
 
+        audit_row = {
+            "qid": r.get("qid"),
+            "attribution": label,
+            "scores": {"party1": score1, "party2": score2, "other": score_other},
+            "structured_scores": {"party1": s1, "party2": s2, "other": so},
+            "text_scores": {"party1": t1, "party2": t2, "other": to},
+            "decision_rule": {
+                "mixed_if_both_party_scores_positive": True,
+                "party1_if_only_party1_positive": True,
+                "party2_if_only_party2_positive": True,
+                "other_if_no_party_evidence": True,
+            },
+            "other_threshold": other_threshold,
+            "hits": (shits + thits)[:200],
+            "other_country_guess": r.get("attribution_detail", {}).get("other_country_guess"),
+            "source_type": (r.get("source") or {}).get("type"),
+            "source_hint": (r.get("source") or {}).get("hint"),
+            "collection_paths": (r.get("source") or {}).get("collection_paths") or [],
+        }
+        if output_labels_cfg["enabled"]:
+            out_field = output_labels_cfg["field_name"]
+            audit_row[out_field] = r.get(out_field)
+        if legacy_labels_cfg["enabled"]:
+            legacy_field = legacy_labels_cfg["field_name"]
+            audit_row[legacy_field] = r.get(legacy_field)
+        attribution_rows.append(audit_row)
+
         counts[label] += 1
 
     write_jsonl(args.output, merged)
     print(f"[attribution] wrote {args.output} ({len(merged)} records)")
     print(f"[attribution] counts: {dict(counts)}")
+
+    if args.attribution_jsonl:
+        write_jsonl(args.attribution_jsonl, attribution_rows)
+        print(f"[attribution] wrote attribution audit {args.attribution_jsonl} ({len(attribution_rows)} records)")
 
     if args.report:
         top3 = other_country_counts.most_common(3)

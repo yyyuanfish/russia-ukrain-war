@@ -22,6 +22,9 @@ Input:
     If omitted, lightweight keywords are auto-derived per language from resolved root category titles.
 - Optional source-hint mapping:
   - `harvest_hints.instance_of_map` in config.
+- Logging:
+  - `pipeline.logging` in config controls log file/query logging.
+  - `--log-file` can override the log file path for this run.
 
 Output:
 - --output: JSONL file (recommended:
@@ -45,10 +48,13 @@ from pipeline_common import (
     binding_to_enriched_record,
     build_item_enrichment_query,
     config_languages,
+    get_active_logger,
+    log_info,
     merge_records_by_qid,
     normalize_record,
     read_json,
     run_wikidata_sparql,
+    setup_script_logging,
     site_keys_for_langs,
     write_json,
     write_jsonl,
@@ -104,9 +110,13 @@ def main() -> None:
     ap.add_argument("--max-titles", type=int, default=0)
     ap.add_argument("--max-members-per-category", type=int, default=0)
     ap.add_argument("--progress-every", type=int, default=25)
+    ap.add_argument("--log-file", default=None, help="Optional log file path (overrides config pipeline.logging.file)")
     args = ap.parse_args()
 
     cfg = read_json(args.config)
+    setup_script_logging(cfg, config_path=args.config, script_name="harvest_categories", override_file=args.log_file)
+    if hasattr(wiki_common, "set_logger"):
+        wiki_common.set_logger(get_active_logger())
     names = cfg.get("category_names") if isinstance(cfg.get("category_names"), list) else []
     category_names = [x for x in names if isinstance(x, str) and x.strip()]
     if not category_names:
@@ -180,12 +190,12 @@ def main() -> None:
     for lang in langs:
         roots = roots_by_lang.get(lang, set())
         if not roots:
-            print(f"[categories] lang={lang}: no root categories found")
+            log_info(f"[categories] lang={lang}: no root categories found")
             continue
 
         lang_keywords = keywords_by_lang.get(lang, [])
         api_url = wiki_common.wiki_api_for_lang(lang)
-        print(
+        log_info(
             f"[categories] lang={lang}: roots={len(roots)}, keyword_filter={'on' if use_keyword_filter else 'off'}, "
             f"keywords={len(lang_keywords)}"
         )
@@ -207,7 +217,7 @@ def main() -> None:
         titles_by_lang[lang].update(walked["titles"])
         visited_categories_by_lang[lang].update(walked["visited_categories"])
 
-        print(
+        log_info(
             f"[categories] lang={lang}: visited_categories={len(visited_categories_by_lang[lang])}, "
             f"titles={len(titles_by_lang[lang])}, stop_reason={walked.get('stop_reason', 'completed')}"
         )
@@ -220,7 +230,7 @@ def main() -> None:
         if not tset:
             continue
         t2q = wiki_common.wikipedia_titles_to_qids(sorted(tset), lang=lang, sleep=args.sleep)
-        print(f"[categories] {lang}: resolved titles -> qids: {len(t2q)} / {len(tset)}")
+        log_info(f"[categories] {lang}: resolved titles -> qids: {len(t2q)} / {len(tset)}")
         for t, q in t2q.items():
             qids.add(q)
             qid_to_paths[q].add(f"category:{lang}")
@@ -233,8 +243,11 @@ def main() -> None:
 
     for i in range(0, len(qid_list), batch_size):
         batch = qid_list[i:i + batch_size]
+        batch_id = (i // batch_size) + 1
+        total_batches = ((len(qid_list) - 1) // batch_size) + 1 if qid_list else 0
+        log_info(f"[categories] enrich_batch={batch_id}/{total_batches} batch_size={len(batch)}")
         query = build_item_enrichment_query(batch, langs, attrib_prop_ids=attrib_prop_ids)
-        data = run_wikidata_sparql(query)
+        data = run_wikidata_sparql(query, query_name=f"categories.enrich.batch_{batch_id}", log_query=True)
 
         for b in data["results"]["bindings"]:
             rec = binding_to_enriched_record(b, langs, attrib_prop_ids=attrib_prop_ids)
@@ -272,7 +285,7 @@ def main() -> None:
 
     rows = merge_records_by_qid(rows, lang_keys=langs, site_keys=site_keys, attrib_prop_ids=attrib_prop_ids)
     write_jsonl(args.output, rows)
-    print(f"[categories] wrote {args.output} ({len(rows)} records)")
+    log_info(f"[categories] wrote {args.output} ({len(rows)} records)")
 
     if args.report:
         report = {
@@ -289,7 +302,7 @@ def main() -> None:
             "resolved_qids": len(rows),
         }
         write_json(args.report, report)
-        print(f"[categories] wrote report {args.report}")
+        log_info(f"[categories] wrote report {args.report}")
 
 
 if __name__ == "__main__":
