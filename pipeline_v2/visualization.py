@@ -42,7 +42,7 @@ import os
 import re
 import tempfile
 from collections import Counter, defaultdict
-from typing import Dict, List, Optional, Set
+from typing import Callable, Dict, List, Optional, Set
 
 from pipeline_common import config_languages, read_json, read_jsonl, write_json
 
@@ -73,6 +73,43 @@ SOURCE_TYPE_TO_KEY = {
     "wikidata_sparql": "wikidata",
     "wikipedia_navboxes": "navboxes",
     "wikipedia_categories": "categories",
+}
+WIKIDATA_SPARQL = "https://query.wikidata.org/sparql"
+VIS_USER_AGENT = "conflict-visualization/1.0 (research; class-summary)"
+UNKNOWN_HINT_TOP_N = 10
+UNKNOWN_HINT_HEATMAP_ITEMS = 6
+UNKNOWN_HINT_LABEL_MAX_CHARS = 34
+FALLBACK_CLASS_LABELS = {
+    "en": {
+        "Q5": "human",
+        "Q43229": "organization",
+        "Q645883": "battle",
+        "Q7278": "political party",
+        "Q11424": "film",
+        "Q79913": "non-governmental organization",
+        "Q191067": "article",
+        "Q273120": "protest",
+        "Q350604": "armed conflict",
+        "Q467011": "invasion",
+        "Q678146": "bombardment",
+        "Q686984": "civil disorder",
+        "Q188686": "military occupation",
+        "Q1190554": "occurrence",
+        "Q1330251": "United Nations General Assembly resolution",
+        "Q13406463": "Wikimedia list article",
+        "Q17928402": "blog post",
+        "Q17524420": "aspect of history",
+        "Q18340550": "Wikimedia timeline",
+        "Q18487055": "missile model",
+        "Q2001676": "offensive",
+        "Q21191270": "television series episode",
+        "Q3002150": "aircraft crash",
+        "Q4071928": "cyberattack",
+        "Q5176896": "counteroffensive",
+        "Q5791104": "international crisis",
+        "Q104841013": "hromada",
+        "Q111034471": "missile strike",
+    }
 }
 
 
@@ -292,6 +329,291 @@ def _lang_nonempty_count(rows: List[dict], lang: str) -> int:
 
 def compute_language_coverage(rows: List[dict], langs: List[str]) -> Dict[str, int]:
     return {lang: _lang_nonempty_count(rows, lang) for lang in langs}
+
+
+def pick_language_overlap_langs(vis_cfg: dict) -> List[str]:
+    ordered: List[str] = []
+    for lang in vis_cfg.get("language_order", []):
+        if isinstance(lang, str):
+            ll = lang.strip().lower()
+            if ll in {"en", "ru", "uk"} and ll not in ordered:
+                ordered.append(ll)
+    for lang in ("en", "ru", "uk"):
+        if lang not in ordered:
+            ordered.append(lang)
+    return ordered[:3]
+
+
+def collect_language_presence_sets(rows: List[dict], langs: List[str], field: str) -> Dict[str, Set[str]]:
+    if field not in {"pages", "labels"}:
+        raise ValueError(f"unsupported language-presence field: {field}")
+
+    out: Dict[str, Set[str]] = {lang: set() for lang in langs}
+    for rec in rows:
+        qid = qid_of(rec)
+        if not qid:
+            continue
+
+        if field == "pages":
+            values = rec.get("sitelinks") if isinstance(rec.get("sitelinks"), dict) else {}
+            for lang in langs:
+                if values.get(f"{lang}wiki"):
+                    out[lang].add(qid)
+        else:
+            values = rec.get("labels") if isinstance(rec.get("labels"), dict) else {}
+            for lang in langs:
+                if values.get(lang):
+                    out[lang].add(qid)
+    return out
+
+
+def build_language_overlap_report(lang_sets: Dict[str, Set[str]], langs: List[str]) -> dict:
+    if len(langs) != 3:
+        raise ValueError("language overlap report requires exactly three languages")
+
+    a, b, c = langs
+    aset = set(lang_sets.get(a, set()))
+    bset = set(lang_sets.get(b, set()))
+    cset = set(lang_sets.get(c, set()))
+    subsets = _venn_subsets(aset, bset, cset)
+
+    return {
+        "langs": list(langs),
+        "set_sizes": {
+            a: len(aset),
+            b: len(bset),
+            c: len(cset),
+        },
+        "venn_subsets": {
+            f"{a}_only": subsets[0],
+            f"{b}_only": subsets[1],
+            f"{a}_{b}_only": subsets[2],
+            f"{c}_only": subsets[3],
+            f"{a}_{c}_only": subsets[4],
+            f"{b}_{c}_only": subsets[5],
+            "all_three": subsets[6],
+        },
+        "entity_count_with_any_language": len(aset | bset | cset),
+    }
+
+
+def resolve_qid_labels(qids: List[str], lang: str = "en") -> Dict[str, Optional[str]]:
+    qids = [q for q in qids if isinstance(q, str) and q.startswith("Q")]
+    if not qids:
+        return {}
+
+    try:
+        from SPARQLWrapper import JSON as SPARQL_JSON
+        from SPARQLWrapper import SPARQLWrapper
+    except Exception:
+        return {}
+
+    values = " ".join(f"wd:{q}" for q in sorted(set(qids)))
+    query = f"""
+PREFIX wd: <http://www.wikidata.org/entity/>
+PREFIX wikibase: <http://wikiba.se/ontology#>
+PREFIX bd: <http://www.bigdata.com/rdf#>
+
+SELECT ?item ?itemLabel WHERE {{
+  VALUES ?item {{ {values} }}
+  SERVICE wikibase:label {{ bd:serviceParam wikibase:language "{lang}" . }}
+}}
+"""
+    try:
+        sparql = SPARQLWrapper(WIKIDATA_SPARQL, agent=VIS_USER_AGENT)
+        sparql.setQuery(query)
+        sparql.setReturnFormat(SPARQL_JSON)
+        sparql.setTimeout(60)
+        data = sparql.query().convert()
+    except Exception:
+        return {}
+
+    out: Dict[str, Optional[str]] = {}
+    for b in data.get("results", {}).get("bindings", []):
+        uri = b.get("item", {}).get("value")
+        label = b.get("itemLabel", {}).get("value")
+        if not uri:
+            continue
+        qid = uri.rsplit("/", 1)[-1]
+        if qid.startswith("Q"):
+            out[qid] = label if isinstance(label, str) and label else None
+    return out
+
+
+def fallback_class_labels(qids: List[str], lang: str = "en") -> Dict[str, Optional[str]]:
+    lang_map = FALLBACK_CLASS_LABELS.get(lang, {})
+    return {qid: lang_map[qid] for qid in qids if qid in lang_map}
+
+
+def pick_report_label_lang(cfg: Optional[dict]) -> str:
+    ccfg = cfg.get("classification") if isinstance(cfg, dict) and isinstance(cfg.get("classification"), dict) else {}
+    report_label_lang = ccfg.get("report_label_lang")
+    if isinstance(report_label_lang, str) and report_label_lang.strip():
+        return report_label_lang.strip().lower()
+
+    lcfg = cfg.get("languages") if isinstance(cfg, dict) and isinstance(cfg.get("languages"), dict) else {}
+    party3 = lcfg.get("party3")
+    if isinstance(party3, str) and party3.strip():
+        return party3.strip().lower()
+    return "en"
+
+
+def _valid_instance_of_qids(rec: dict) -> List[str]:
+    insts = rec.get("instance_of")
+    if not isinstance(insts, list):
+        return []
+
+    out: List[str] = []
+    seen: Set[str] = set()
+    for raw in insts:
+        if not isinstance(raw, str):
+            continue
+        qid = raw.rsplit("/", 1)[-1] if "/Q" in raw else raw
+        if qid.startswith("Q") and qid not in seen:
+            out.append(qid)
+            seen.add(qid)
+    return out
+
+
+def _pack_unknown_class_summary(
+    counter: Counter,
+    unknown_entity_count: int,
+    missing_instance_of_count: int,
+    label_map: Dict[str, Optional[str]],
+    top_n: int,
+) -> dict:
+    top_classes = []
+    for qid, count in counter.most_common(max(1, int(top_n))):
+        label = label_map.get(qid)
+        display = f"{label} ({qid})" if isinstance(label, str) and label.strip() else qid
+        top_classes.append(
+            {
+                "qid": qid,
+                "label": label,
+                "display": display,
+                "count": int(count),
+            }
+        )
+
+    return {
+        "unknown_entity_count": int(unknown_entity_count),
+        "entities_with_no_instance_of": int(missing_instance_of_count),
+        "unique_class_count": int(len(counter)),
+        "instance_assignment_total": int(sum(counter.values())),
+        "top_classes": top_classes,
+    }
+
+
+def build_unknown_hint_class_report(
+    rows: List[dict],
+    top_n: int = UNKNOWN_HINT_TOP_N,
+    label_lang: str = "en",
+    label_resolver: Optional[Callable[[List[str], str], Dict[str, Optional[str]]]] = None,
+) -> dict:
+    overall_counts = Counter()
+    overall_unknown_entities = 0
+    overall_missing_instance = 0
+    by_source_counts = defaultdict(Counter)
+    by_source_unknown_entities = Counter()
+    by_source_missing_instance = Counter()
+    all_qids: Set[str] = set()
+
+    for rec in rows:
+        inst_qids = _valid_instance_of_qids(rec)
+
+        entity_profile = _entity_hint_profile(rec)
+        if entity_profile.get("effective_hint") == "unknown":
+            overall_unknown_entities += 1
+            if inst_qids:
+                for qid in inst_qids:
+                    overall_counts[qid] += 1
+                    all_qids.add(qid)
+            else:
+                overall_missing_instance += 1
+
+        for sk in SOURCE_KEYS:
+            source_profile = _source_hint_profile(rec, sk)
+            if not bool(source_profile.get("present")):
+                continue
+            if source_profile.get("effective_hint") != "unknown":
+                continue
+
+            by_source_unknown_entities[sk] += 1
+            if inst_qids:
+                for qid in inst_qids:
+                    by_source_counts[sk][qid] += 1
+                    all_qids.add(qid)
+            else:
+                by_source_missing_instance[sk] += 1
+
+    label_map = fallback_class_labels(sorted(all_qids), label_lang) if all_qids else {}
+    resolver = label_resolver if callable(label_resolver) else resolve_qid_labels
+    if all_qids:
+        resolved = resolver(sorted(all_qids), label_lang)
+        if isinstance(resolved, dict):
+            for qid, label in resolved.items():
+                if isinstance(label, str) and label.strip():
+                    label_map[qid] = label.strip()
+
+    return {
+        "label_lang": label_lang,
+        "top_n": int(top_n),
+        "overall": _pack_unknown_class_summary(
+            overall_counts,
+            overall_unknown_entities,
+            overall_missing_instance,
+            label_map,
+            top_n,
+        ),
+        "by_source": {
+            sk: _pack_unknown_class_summary(
+                by_source_counts.get(sk, Counter()),
+                int(by_source_unknown_entities.get(sk, 0)),
+                int(by_source_missing_instance.get(sk, 0)),
+                label_map,
+                top_n,
+            )
+            for sk in SOURCE_KEYS
+        },
+    }
+
+
+def _shorten_note_label(text: str, max_chars: int = UNKNOWN_HINT_LABEL_MAX_CHARS) -> str:
+    if not isinstance(text, str):
+        return ""
+    if len(text) <= max_chars:
+        return text
+    return text[: max_chars - 3].rstrip() + "..."
+
+
+def format_unknown_class_note(summary: Optional[dict], max_items: int = UNKNOWN_HINT_HEATMAP_ITEMS) -> Optional[str]:
+    if not isinstance(summary, dict):
+        return None
+
+    unknown_entity_count = int(summary.get("unknown_entity_count", 0))
+    top_classes = summary.get("top_classes") if isinstance(summary.get("top_classes"), list) else []
+    missing_instance = int(summary.get("entities_with_no_instance_of", 0))
+
+    if unknown_entity_count <= 0:
+        return None
+
+    lines = [f"Unknown hint classes (n={unknown_entity_count})"]
+    shown = 0
+    for item in top_classes:
+        if shown >= max(1, int(max_items)):
+            break
+        if not isinstance(item, dict):
+            continue
+        label = item.get("display") or item.get("label") or item.get("qid") or "unknown class"
+        count = int(item.get("count", 0))
+        lines.append(f"{shown + 1}. {_shorten_note_label(str(label))} ({count})")
+        shown += 1
+
+    if shown == 0:
+        lines.append("No instance_of labels available")
+    if missing_instance > 0:
+        lines.append(f"No instance_of: {missing_instance}")
+    return "\n".join(lines)
 
 
 def _counter_dict(c) -> Dict[str, int]:
@@ -597,6 +919,7 @@ def plot_hint_heatmap(
     pct_mode: str = "column",
     filename: str = "hint_attribution_heatmap.png",
     title_prefix: str = "Attribution by Harvest Hint",
+    unknown_class_summary: Optional[dict] = None,
 ) -> None:
     if not HAS_PLOT:
         return
@@ -615,29 +938,49 @@ def plot_hint_heatmap(
     data = np.array([[int((counts.get(lab) or {}).get(h, 0)) for h in hints] for lab in labels], dtype=float)
     name_map = vis_cfg.get("attribution_display_names", {})
     ylabels = [name_map.get(lab, lab) for lab in labels]
+    unknown_note = format_unknown_class_note(unknown_class_summary)
 
     fig_w = max(8, 1.4 * len(hints))
     fig_h = max(4, 1.1 * len(labels) + 2.0)
-    plt.figure(figsize=(fig_w, fig_h))
+    if unknown_note:
+        fig_w += 4.8
+
+    fig, ax = plt.subplots(figsize=(fig_w, fig_h))
     vmax = max(float(data.max()), 1.0)
-    im = plt.imshow(data, cmap="YlGnBu", aspect="auto", vmin=0, vmax=vmax)
-    cbar = plt.colorbar(im)
+    im = ax.imshow(data, cmap="YlGnBu", aspect="auto", vmin=0, vmax=vmax)
+    cbar = fig.colorbar(im, ax=ax)
     cbar.set_label("Count")
 
-    plt.xticks(np.arange(len(hints)), hints, rotation=35, ha="right")
-    plt.yticks(np.arange(len(labels)), ylabels)
-    plt.title(f"{title_prefix} (count and {pct_desc})")
+    ax.set_xticks(np.arange(len(hints)))
+    ax.set_xticklabels(hints, rotation=35, ha="right")
+    ax.set_yticks(np.arange(len(labels)))
+    ax.set_yticklabels(ylabels)
+    ax.set_title(f"{title_prefix} (count and {pct_desc})")
 
     for i, lab in enumerate(labels):
         for j, h in enumerate(hints):
             n = int((counts.get(lab) or {}).get(h, 0))
             p = float((pct.get(lab) or {}).get(h, 0.0))
             color = "white" if data[i, j] > (0.55 * vmax) else "black"
-            plt.text(j, i, f"{n}\n({p:.1f}%)", ha="center", va="center", fontsize=8, color=color)
+            ax.text(j, i, f"{n}\n({p:.1f}%)", ha="center", va="center", fontsize=8, color=color)
 
-    plt.tight_layout()
-    plt.savefig(os.path.join(outdir, filename))
-    plt.close()
+    if unknown_note:
+        fig.tight_layout(rect=[0, 0, 0.70, 1])
+        fig.text(
+            0.73,
+            0.5,
+            unknown_note,
+            ha="left",
+            va="center",
+            fontsize=8,
+            wrap=True,
+            bbox={"boxstyle": "round,pad=0.4", "facecolor": "#fff8dc", "edgecolor": "#999999"},
+        )
+    else:
+        fig.tight_layout()
+
+    fig.savefig(os.path.join(outdir, filename), bbox_inches="tight", pad_inches=0.2)
+    plt.close(fig)
 
 
 def plot_unknown_hint_breakdown(unknown_report: dict, outdir: str) -> None:
@@ -679,6 +1022,34 @@ def _safe_slug(text: str) -> str:
     return out or "label"
 
 
+def plot_language_overlap_venn(
+    lang_sets: Dict[str, Set[str]],
+    langs: List[str],
+    set_labels: List[str],
+    title: str,
+    out_path: str,
+) -> None:
+    if not HAS_PLOT or not HAS_VENN:
+        return
+    if len(langs) != 3 or len(set_labels) != 3:
+        return
+
+    a, b, c = langs
+    plt.figure(figsize=(6, 6))
+    venn3(
+        subsets=_venn_subsets(
+            set(lang_sets.get(a, set())),
+            set(lang_sets.get(b, set())),
+            set(lang_sets.get(c, set())),
+        ),
+        set_labels=tuple(set_labels),
+    )
+    plt.title(title)
+    plt.tight_layout()
+    plt.savefig(out_path)
+    plt.close()
+
+
 def make_plots(
     report: dict,
     outdir: str,
@@ -687,6 +1058,9 @@ def make_plots(
     nav_qids: Set[str],
     cat_qids: Set[str],
     label_qids: Dict[str, Set[str]],
+    page_lang_sets: Dict[str, Set[str]],
+    label_lang_sets: Dict[str, Set[str]],
+    overlap_langs: List[str],
 ) -> None:
     if not HAS_PLOT:
         return
@@ -798,7 +1172,27 @@ def make_plots(
             plt.savefig(os.path.join(outdir, f"venn_{_safe_slug(label_key)}.png"))
             plt.close()
 
+    if len(overlap_langs) == 3:
+        plot_language_overlap_venn(
+            page_lang_sets,
+            overlap_langs,
+            [f"{lang}wiki" for lang in overlap_langs],
+            "Wikipedia page overlap by language (Venn)",
+            os.path.join(outdir, "venn_wikipedia_pages_by_language.png"),
+        )
+        plot_language_overlap_venn(
+            label_lang_sets,
+            overlap_langs,
+            [f"labels.{lang}" for lang in overlap_langs],
+            "Wikidata label overlap by language (Venn)",
+            os.path.join(outdir, "venn_wikidata_labels_by_language.png"),
+        )
+
     hint_report = report.get("classified", {}).get("hint_attribution")
+    unknown_class_report = report.get("classified", {}).get("unknown_hint_class_analysis")
+    overall_unknown_class_summary = None
+    if isinstance(unknown_class_report, dict):
+        overall_unknown_class_summary = unknown_class_report.get("overall")
     if isinstance(hint_report, dict):
         plot_hint_heatmap(
             hint_report,
@@ -807,6 +1201,7 @@ def make_plots(
             pct_mode="column",
             filename="hint_attribution_heatmap.png",
             title_prefix="Attribution by Harvest Hint",
+            unknown_class_summary=overall_unknown_class_summary,
         )
         plot_hint_heatmap(
             hint_report,
@@ -815,6 +1210,7 @@ def make_plots(
             pct_mode="row",
             filename="hint_attribution_heatmap_row_normalized.png",
             title_prefix="Attribution by Harvest Hint",
+            unknown_class_summary=overall_unknown_class_summary,
         )
 
     by_source = report.get("classified", {}).get("hint_attribution_by_source", {})
@@ -825,6 +1221,9 @@ def make_plots(
             if not isinstance(hrep, dict):
                 continue
             source_label = source_names.get(sk, sk)
+            source_unknown_summary = None
+            if isinstance(unknown_class_report, dict):
+                source_unknown_summary = (unknown_class_report.get("by_source") or {}).get(sk)
             plot_hint_heatmap(
                 hrep,
                 outdir,
@@ -832,6 +1231,7 @@ def make_plots(
                 pct_mode="column",
                 filename=f"hint_attribution_heatmap_{_safe_slug(sk)}.png",
                 title_prefix=f"{source_label}: Attribution by Hint",
+                unknown_class_summary=source_unknown_summary,
             )
             plot_hint_heatmap(
                 hrep,
@@ -840,6 +1240,7 @@ def make_plots(
                 pct_mode="row",
                 filename=f"hint_attribution_heatmap_{_safe_slug(sk)}_row_normalized.png",
                 title_prefix=f"{source_label}: Attribution by Hint",
+                unknown_class_summary=source_unknown_summary,
             )
 
     unknown_report = report.get("classified", {}).get("unknown_hint_analysis")
@@ -940,6 +1341,11 @@ def main() -> None:
                 unknown_reason_by_source_label[sk][lab][sreason] += 1
 
     lang_cov = compute_language_coverage(classified_rows, vis_cfg.get("language_order", []))
+    overlap_langs = pick_language_overlap_langs(vis_cfg)
+    page_lang_sets = collect_language_presence_sets(classified_rows, overlap_langs, field="pages")
+    label_lang_sets = collect_language_presence_sets(classified_rows, overlap_langs, field="labels")
+    page_overlap_report = build_language_overlap_report(page_lang_sets, overlap_langs)
+    label_overlap_report = build_language_overlap_report(label_lang_sets, overlap_langs)
     hint_report = build_hint_report(by_label_hint, labels=["party1", "party2", "mixed", "other"])
     hint_csv = write_hint_table_csv(
         hint_report,
@@ -987,6 +1393,11 @@ def main() -> None:
         by_source_reason_counts=unknown_reason_by_source,
         by_source_label_reason_counts=unknown_reason_by_source_label,
     )
+    unknown_class_report = build_unknown_hint_class_report(
+        classified_rows,
+        top_n=UNKNOWN_HINT_TOP_N,
+        label_lang=pick_report_label_lang(cfg),
+    )
 
     heatmap_outputs = {
         "column": os.path.join(args.outdir, "hint_attribution_heatmap.png"),
@@ -1023,9 +1434,12 @@ def main() -> None:
             "by_label_source_bucket": {k: dict(v) for k, v in by_label_bucket.items()},
             "label_unique_qids": {k: len(v) for k, v in label_qids.items()},
             "language_coverage_nonempty_label_or_desc": lang_cov,
+            "wikipedia_page_language_overlap": page_overlap_report,
+            "wikidata_label_language_overlap": label_overlap_report,
             "hint_attribution": hint_report,
             "hint_attribution_by_source": hint_report_by_source,
             "unknown_hint_analysis": unknown_report,
+            "unknown_hint_class_analysis": unknown_class_report,
         },
         "visualization_config": vis_cfg,
         "entity_files": entity_files,
@@ -1038,12 +1452,27 @@ def main() -> None:
             "hint_attribution_csv_by_source": hint_csv_by_source,
             "hint_attribution_heatmap": heatmap_outputs,
             "hint_attribution_heatmap_by_source": heatmap_by_source,
+            "language_overlap_venn": {
+                "wikipedia_pages": os.path.join(args.outdir, "venn_wikipedia_pages_by_language.png"),
+                "wikidata_labels": os.path.join(args.outdir, "venn_wikidata_labels_by_language.png"),
+            },
             "unknown_hint_plot": os.path.join(args.outdir, "unknown_hint_reason_counts.png"),
         },
         "note": "Uses attribution field when present; fallback field is config-driven.",
     }
 
-    make_plots(report, args.outdir, vis_cfg, wd_qids, nav_qids, cat_qids, label_qids)
+    make_plots(
+        report,
+        args.outdir,
+        vis_cfg,
+        wd_qids,
+        nav_qids,
+        cat_qids,
+        label_qids,
+        page_lang_sets,
+        label_lang_sets,
+        overlap_langs,
+    )
 
     out_report = os.path.join(args.outdir, args.report)
     write_json(out_report, report)

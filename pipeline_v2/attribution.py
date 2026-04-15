@@ -49,9 +49,6 @@ import time
 from collections import Counter, defaultdict
 from typing import Dict, List, Optional, Set, Tuple
 
-from SPARQLWrapper import JSON as SPARQL_JSON
-from SPARQLWrapper import SPARQLWrapper
-
 from pipeline_common import (
     attribution_prop_ids_from_config,
     config_languages,
@@ -74,6 +71,12 @@ WEIGHT_WEAK = 1
 
 
 def run_sparql(query: str, retries: int = 3, backoff: float = 2.0) -> dict:
+    try:
+        from SPARQLWrapper import JSON as SPARQL_JSON
+        from SPARQLWrapper import SPARQLWrapper
+    except Exception as exc:
+        raise RuntimeError("SPARQLWrapper is required for Wikidata queries. Install with: pip install SPARQLWrapper") from exc
+
     sparql = SPARQLWrapper(WIKIDATA_SPARQL, agent=USER_AGENT)
     sparql.setQuery(query)
     sparql.setReturnFormat(SPARQL_JSON)
@@ -316,6 +319,7 @@ SELECT ?place ?country WHERE {{
 
 
 def _scan_text(
+# 扫一小段文本，看命中了哪些关键词。 这是 text_score() 的内部小帮手
     text: str,
     lang: str,
     p1_pat: Dict[str, List[re.Pattern]],
@@ -348,6 +352,7 @@ def _scan_text(
 
 
 def text_score(
+    # 看 labels、descriptions、aliases 这些文字里，有没有命中 party1 / party2 / other 的关键词，然后打分
     entity: dict,
     scan_langs: List[str],
     p1_pat: Dict[str, List[re.Pattern]],
@@ -382,6 +387,7 @@ def text_score(
 
 
 def structured_score(
+    # 不看文字，直接看结构化字段，比如某个属性里是不是 Russia、Ukraine，或者某个地点是不是属于某个国家，然后打分
     entity: dict,
     party1_ids: Set[str],
     party2_ids: Set[str],

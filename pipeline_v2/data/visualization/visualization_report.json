@@ -1,9 +1,9 @@
 {
   "sources": {
     "files": {
-      "wikidata": "/Users/yuanyu/Desktop/Russia Ukrain War/pipeline_v2/data/entities/wikidata_entities.jsonl",
-      "navboxes": "/Users/yuanyu/Desktop/Russia Ukrain War/pipeline_v2/data/entities/navboxes_entities.jsonl",
-      "categories": "/Users/yuanyu/Desktop/Russia Ukrain War/pipeline_v2/data/entities/categories_entities.jsonl"
+      "wikidata": "pipeline_v2/data/entities/wikidata_entities.jsonl",
+      "navboxes": "pipeline_v2/data/entities/navboxes_entities.jsonl",
+      "categories": "pipeline_v2/data/entities/categories_entities.jsonl"
     },
     "sizes": {
       "wikidata": 2723,
@@ -19,7 +19,7 @@
     }
   },
   "classified": {
-    "file": "/Users/yuanyu/Desktop/Russia Ukrain War/pipeline_v2/data/classified_entities.jsonl",
+    "file": "pipeline_v2/data/classified_entities.jsonl",
     "rows": 4063,
     "attribution_counts": {
       "mixed": 593,
@@ -78,6 +78,50 @@
       "en": 1918,
       "ru": 1517,
       "uk": 3744
+    },
+    "wikipedia_page_language_overlap": {
+      "langs": [
+        "en",
+        "ru",
+        "uk"
+      ],
+      "set_sizes": {
+        "en": 1077,
+        "ru": 1146,
+        "uk": 3644
+      },
+      "venn_subsets": {
+        "en_only": 67,
+        "ru_only": 149,
+        "en_ru_only": 88,
+        "uk_only": 2522,
+        "en_uk_only": 213,
+        "ru_uk_only": 200,
+        "all_three": 709
+      },
+      "entity_count_with_any_language": 3948
+    },
+    "wikidata_label_language_overlap": {
+      "langs": [
+        "en",
+        "ru",
+        "uk"
+      ],
+      "set_sizes": {
+        "en": 1646,
+        "ru": 1406,
+        "uk": 3712
+      },
+      "venn_subsets": {
+        "en_only": 117,
+        "ru_only": 68,
+        "en_ru_only": 154,
+        "uk_only": 2203,
+        "en_uk_only": 325,
+        "ru_uk_only": 134,
+        "all_three": 1050
+      },
+      "entity_count_with_any_language": 4051
     },
     "hint_attribution": {
       "labels": [
@@ -695,6 +739,284 @@
         "Use missing_info vs true_unknown to separate metadata gaps from real unknown entities.",
         "Source-level group counts help identify which harvester introduces unknown dilution."
       ]
+    },
+    "unknown_hint_class_analysis": {
+      "label_lang": "en",
+      "top_n": 10,
+      "overall": {
+        "unknown_entity_count": 1125,
+        "entities_with_no_instance_of": 182,
+        "unique_class_count": 519,
+        "instance_assignment_total": 1210,
+        "top_classes": [
+          {
+            "qid": "Q13406463",
+            "label": "Wikimedia list article",
+            "display": "Wikimedia list article (Q13406463)",
+            "count": 130
+          },
+          {
+            "qid": "Q104841013",
+            "label": "hromada",
+            "display": "hromada (Q104841013)",
+            "count": 25
+          },
+          {
+            "qid": "Q79913",
+            "label": "non-governmental organization",
+            "display": "non-governmental organization (Q79913)",
+            "count": 25
+          },
+          {
+            "qid": "Q17524420",
+            "label": "aspect of history",
+            "display": "aspect of history (Q17524420)",
+            "count": 22
+          },
+          {
+            "qid": "Q1330251",
+            "label": "United Nations General Assembly resolution",
+            "display": "United Nations General Assembly resolution (Q1330251)",
+            "count": 21
+          },
+          {
+            "qid": "Q21191270",
+            "label": "television series episode",
+            "display": "television series episode (Q21191270)",
+            "count": 21
+          },
+          {
+            "qid": "Q111034471",
+            "label": "missile strike",
+            "display": "missile strike (Q111034471)",
+            "count": 19
+          },
+          {
+            "qid": "Q7278",
+            "label": "political party",
+            "display": "political party (Q7278)",
+            "count": 18
+          },
+          {
+            "qid": "Q2001676",
+            "label": "offensive",
+            "display": "offensive (Q2001676)",
+            "count": 18
+          },
+          {
+            "qid": "Q17928402",
+            "label": "blog post",
+            "display": "blog post (Q17928402)",
+            "count": 16
+          }
+        ]
+      },
+      "by_source": {
+        "wikidata": {
+          "unknown_entity_count": 226,
+          "entities_with_no_instance_of": 22,
+          "unique_class_count": 119,
+          "instance_assignment_total": 249,
+          "top_classes": [
+            {
+              "qid": "Q13406463",
+              "label": "Wikimedia list article",
+              "display": "Wikimedia list article (Q13406463)",
+              "count": 28
+            },
+            {
+              "qid": "Q21191270",
+              "label": "television series episode",
+              "display": "television series episode (Q21191270)",
+              "count": 20
+            },
+            {
+              "qid": "Q17928402",
+              "label": "blog post",
+              "display": "blog post (Q17928402)",
+              "count": 16
+            },
+            {
+              "qid": "Q79913",
+              "label": "non-governmental organization",
+              "display": "non-governmental organization (Q79913)",
+              "count": 16
+            },
+            {
+              "qid": "Q18487055",
+              "label": "missile model",
+              "display": "missile model (Q18487055)",
+              "count": 6
+            },
+            {
+              "qid": "Q191067",
+              "label": "article",
+              "display": "article (Q191067)",
+              "count": 5
+            },
+            {
+              "qid": "Q111034471",
+              "label": "missile strike",
+              "display": "missile strike (Q111034471)",
+              "count": 4
+            },
+            {
+              "qid": "Q678146",
+              "label": "bombardment",
+              "display": "bombardment (Q678146)",
+              "count": 4
+            },
+            {
+              "qid": "Q11424",
+              "label": "film",
+              "display": "film (Q11424)",
+              "count": 4
+            },
+            {
+              "qid": "Q467011",
+              "label": "invasion",
+              "display": "invasion (Q467011)",
+              "count": 3
+            }
+          ]
+        },
+        "navboxes": {
+          "unknown_entity_count": 81,
+          "entities_with_no_instance_of": 3,
+          "unique_class_count": 73,
+          "instance_assignment_total": 108,
+          "top_classes": [
+            {
+              "qid": "Q18340550",
+              "label": "Wikimedia timeline",
+              "display": "Wikimedia timeline (Q18340550)",
+              "count": 8
+            },
+            {
+              "qid": "Q2001676",
+              "label": "offensive",
+              "display": "offensive (Q2001676)",
+              "count": 5
+            },
+            {
+              "qid": "Q350604",
+              "label": "armed conflict",
+              "display": "armed conflict (Q350604)",
+              "count": 4
+            },
+            {
+              "qid": "Q273120",
+              "label": "protest",
+              "display": "protest (Q273120)",
+              "count": 3
+            },
+            {
+              "qid": "Q3002150",
+              "label": "aircraft crash",
+              "display": "aircraft crash (Q3002150)",
+              "count": 3
+            },
+            {
+              "qid": "Q5176896",
+              "label": "counteroffensive",
+              "display": "counteroffensive (Q5176896)",
+              "count": 3
+            },
+            {
+              "qid": "Q678146",
+              "label": "bombardment",
+              "display": "bombardment (Q678146)",
+              "count": 3
+            },
+            {
+              "qid": "Q686984",
+              "label": "civil disorder",
+              "display": "civil disorder (Q686984)",
+              "count": 3
+            },
+            {
+              "qid": "Q5791104",
+              "label": "international crisis",
+              "display": "international crisis (Q5791104)",
+              "count": 2
+            },
+            {
+              "qid": "Q4071928",
+              "label": "cyberattack",
+              "display": "cyberattack (Q4071928)",
+              "count": 2
+            }
+          ]
+        },
+        "categories": {
+          "unknown_entity_count": 900,
+          "entities_with_no_instance_of": 163,
+          "unique_class_count": 455,
+          "instance_assignment_total": 966,
+          "top_classes": [
+            {
+              "qid": "Q13406463",
+              "label": "Wikimedia list article",
+              "display": "Wikimedia list article (Q13406463)",
+              "count": 104
+            },
+            {
+              "qid": "Q104841013",
+              "label": "hromada",
+              "display": "hromada (Q104841013)",
+              "count": 25
+            },
+            {
+              "qid": "Q17524420",
+              "label": "aspect of history",
+              "display": "aspect of history (Q17524420)",
+              "count": 22
+            },
+            {
+              "qid": "Q1330251",
+              "label": "United Nations General Assembly resolution",
+              "display": "United Nations General Assembly resolution (Q1330251)",
+              "count": 21
+            },
+            {
+              "qid": "Q7278",
+              "label": "political party",
+              "display": "political party (Q7278)",
+              "count": 18
+            },
+            {
+              "qid": "Q111034471",
+              "label": "missile strike",
+              "display": "missile strike (Q111034471)",
+              "count": 16
+            },
+            {
+              "qid": "Q2001676",
+              "label": "offensive",
+              "display": "offensive (Q2001676)",
+              "count": 13
+            },
+            {
+              "qid": "Q79913",
+              "label": "non-governmental organization",
+              "display": "non-governmental organization (Q79913)",
+              "count": 13
+            },
+            {
+              "qid": "Q188686",
+              "label": "military occupation",
+              "display": "military occupation (Q188686)",
+              "count": 12
+            },
+            {
+              "qid": "Q1190554",
+              "label": "occurrence",
+              "display": "occurrence (Q1190554)",
+              "count": 12
+            }
+          ]
+        }
+      }
     }
   },
   "visualization_config": {
@@ -739,42 +1061,46 @@
   },
   "outputs": {
     "hint_attribution_csv": {
-      "column": "/Users/yuanyu/Desktop/Russia Ukrain War/pipeline_v2/data/visualization/hint_attribution_table.csv",
-      "row": "/Users/yuanyu/Desktop/Russia Ukrain War/pipeline_v2/data/visualization/hint_attribution_table_row_normalized.csv"
+      "column": "pipeline_v2/data/visualization/hint_attribution_table.csv",
+      "row": "pipeline_v2/data/visualization/hint_attribution_table_row_normalized.csv"
     },
     "hint_attribution_csv_by_source": {
       "wikidata": {
-        "column": "/Users/yuanyu/Desktop/Russia Ukrain War/pipeline_v2/data/visualization/hint_attribution_table_wikidata.csv",
-        "row": "/Users/yuanyu/Desktop/Russia Ukrain War/pipeline_v2/data/visualization/hint_attribution_table_wikidata_row_normalized.csv"
+        "column": "pipeline_v2/data/visualization/hint_attribution_table_wikidata.csv",
+        "row": "pipeline_v2/data/visualization/hint_attribution_table_wikidata_row_normalized.csv"
       },
       "navboxes": {
-        "column": "/Users/yuanyu/Desktop/Russia Ukrain War/pipeline_v2/data/visualization/hint_attribution_table_navboxes.csv",
-        "row": "/Users/yuanyu/Desktop/Russia Ukrain War/pipeline_v2/data/visualization/hint_attribution_table_navboxes_row_normalized.csv"
+        "column": "pipeline_v2/data/visualization/hint_attribution_table_navboxes.csv",
+        "row": "pipeline_v2/data/visualization/hint_attribution_table_navboxes_row_normalized.csv"
       },
       "categories": {
-        "column": "/Users/yuanyu/Desktop/Russia Ukrain War/pipeline_v2/data/visualization/hint_attribution_table_categories.csv",
-        "row": "/Users/yuanyu/Desktop/Russia Ukrain War/pipeline_v2/data/visualization/hint_attribution_table_categories_row_normalized.csv"
+        "column": "pipeline_v2/data/visualization/hint_attribution_table_categories.csv",
+        "row": "pipeline_v2/data/visualization/hint_attribution_table_categories_row_normalized.csv"
       }
     },
     "hint_attribution_heatmap": {
-      "column": "/Users/yuanyu/Desktop/Russia Ukrain War/pipeline_v2/data/visualization/hint_attribution_heatmap.png",
-      "row": "/Users/yuanyu/Desktop/Russia Ukrain War/pipeline_v2/data/visualization/hint_attribution_heatmap_row_normalized.png"
+      "column": "pipeline_v2/data/visualization/hint_attribution_heatmap.png",
+      "row": "pipeline_v2/data/visualization/hint_attribution_heatmap_row_normalized.png"
     },
     "hint_attribution_heatmap_by_source": {
       "wikidata": {
-        "column": "/Users/yuanyu/Desktop/Russia Ukrain War/pipeline_v2/data/visualization/hint_attribution_heatmap_wikidata.png",
-        "row": "/Users/yuanyu/Desktop/Russia Ukrain War/pipeline_v2/data/visualization/hint_attribution_heatmap_wikidata_row_normalized.png"
+        "column": "pipeline_v2/data/visualization/hint_attribution_heatmap_wikidata.png",
+        "row": "pipeline_v2/data/visualization/hint_attribution_heatmap_wikidata_row_normalized.png"
       },
       "navboxes": {
-        "column": "/Users/yuanyu/Desktop/Russia Ukrain War/pipeline_v2/data/visualization/hint_attribution_heatmap_navboxes.png",
-        "row": "/Users/yuanyu/Desktop/Russia Ukrain War/pipeline_v2/data/visualization/hint_attribution_heatmap_navboxes_row_normalized.png"
+        "column": "pipeline_v2/data/visualization/hint_attribution_heatmap_navboxes.png",
+        "row": "pipeline_v2/data/visualization/hint_attribution_heatmap_navboxes_row_normalized.png"
       },
       "categories": {
-        "column": "/Users/yuanyu/Desktop/Russia Ukrain War/pipeline_v2/data/visualization/hint_attribution_heatmap_categories.png",
-        "row": "/Users/yuanyu/Desktop/Russia Ukrain War/pipeline_v2/data/visualization/hint_attribution_heatmap_categories_row_normalized.png"
+        "column": "pipeline_v2/data/visualization/hint_attribution_heatmap_categories.png",
+        "row": "pipeline_v2/data/visualization/hint_attribution_heatmap_categories_row_normalized.png"
       }
     },
-    "unknown_hint_plot": "/Users/yuanyu/Desktop/Russia Ukrain War/pipeline_v2/data/visualization/unknown_hint_reason_counts.png"
+    "language_overlap_venn": {
+      "wikipedia_pages": "pipeline_v2/data/visualization/venn_wikipedia_pages_by_language.png",
+      "wikidata_labels": "pipeline_v2/data/visualization/venn_wikidata_labels_by_language.png"
+    },
+    "unknown_hint_plot": "pipeline_v2/data/visualization/unknown_hint_reason_counts.png"
   },
   "note": "Uses attribution field when present; fallback field is config-driven."
 }

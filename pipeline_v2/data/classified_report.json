@@ -1,8 +1,8 @@
 {
   "input_files": [
-    "/Users/yuanyu/Desktop/Russia Ukrain War/pipeline_v2/data/entities/categories_entities.jsonl",
-    "/Users/yuanyu/Desktop/Russia Ukrain War/pipeline_v2/data/entities/navboxes_entities.jsonl",
-    "/Users/yuanyu/Desktop/Russia Ukrain War/pipeline_v2/data/entities/wikidata_entities.jsonl"
+    "pipeline_v2/data/entities/categories_entities.jsonl",
+    "pipeline_v2/data/entities/navboxes_entities.jsonl",
+    "pipeline_v2/data/entities/wikidata_entities.jsonl"
   ],
   "loaded_rows": 4175,
   "unique_qids": 4063,

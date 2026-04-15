@@ -12,7 +12,7 @@ This folder provides a config-driven pipeline for conflict entity harvesting and
 - Uses one attribution script:
   - `attribution.py`
 - Keeps one unified JSONL schema across all harvest outputs.
-- Keeps your original `ru_ua_*` scripts for backward compatibility.
+- Moves the original `ru_ua_*` scripts into `ru_ua_only/` for backward compatibility.
 
 ## Files
 
@@ -25,6 +25,55 @@ This folder provides a config-driven pipeline for conflict entity harvesting and
 - `attribution.py`: classify into `party1 | party2 | mixed | other`.
 - `visualization.py` (optional): overlap + attribution summary report and figures.
 - `run_pipeline.py`: one-command runner (reads all paths/switches from config).
+
+## Workflow overview
+
+```mermaid
+flowchart LR
+    A["config.json"] --> B["run_pipeline.py"]
+    B --> C["harvest_wikidata.py"]
+    B --> D["harvest_navboxes.py"]
+    B --> E["harvest_categories.py"]
+    B --> F["attribution.py"]
+    B --> G["visualization.py"]
+
+    D --> H["wikipedia_common.py"]
+    E --> H
+    C --> H
+
+    C --> I["pipeline_common.py"]
+    D --> I
+    E --> I
+    F --> I
+    G --> I
+    B --> I
+
+    C --> J["data/entities/wikidata_entities.jsonl"]
+    D --> K["data/entities/navboxes_entities.jsonl"]
+    E --> L["data/entities/categories_entities.jsonl"]
+
+    J --> F
+    K --> F
+    L --> F
+
+    F --> M["data/classified_entities.jsonl"]
+    F --> N["data/classified_report.json"]
+    F --> O["data/attribution_scores.jsonl"]
+
+    M --> G
+    J --> G
+    K --> G
+    L --> G
+
+    G --> P["data/visualization/*"]
+```
+
+- `run_pipeline.py` decides which steps to run and in what order.
+- `wikipedia_common.py` provides shared Wikipedia crawling and parsing utilities for the harvest scripts.
+- `pipeline_common.py` provides shared schema normalization, IO, merge, logging, and Wikidata enrichment utilities.
+- The three harvesters write source-level outputs into `data/entities/*.jsonl`.
+- `attribution.py` merges those harvested entities and assigns `party1 | party2 | mixed | other`.
+- `visualization.py` reads both the classified output and the source outputs to produce figures and reports.
 
 ## Unified JSONL schema (all harvesters)
 
@@ -166,7 +215,7 @@ For backward compatibility with old pipelines, you can also enable:
 ## Install
 
 ```bash
-cd "/Users/yuanyu/Desktop/Russia Ukrain War/pipeline_v2"
+cd "/Users/yuanyu/Desktop/Russia_Ukrain_War/pipeline_v2"
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
@@ -176,7 +225,7 @@ pip install lxml numpy matplotlib matplotlib-venn
 If you already use your existing environment, you can skip creating `.venv` and run:
 
 ```bash
-source "/Users/yuanyu/Desktop/Russia Ukrain War/ru_ua/bin/activate"
+source "/Users/yuanyu/Desktop/Russia_Ukrain_War/ru_ua/bin/activate"
 pip install -r requirements.txt
 ```
 
@@ -191,9 +240,9 @@ Two equivalent ways are supported:
 All steps are read from `config.json`:
 
 ```bash
-cd "/Users/yuanyu/Desktop/Russia Ukrain War/pipeline_v2"
+cd "/Users/yuanyu/Desktop/Russia_Ukrain_War/pipeline_v2"
 source .venv/bin/activate
-# or: source "/Users/yuanyu/Desktop/Russia Ukrain War/ru_ua/bin/activate"
+# or: source "/Users/yuanyu/Desktop/Russia_Ukrain_War/ru_ua/bin/activate"
 
 python run_pipeline.py --config config.json
 ```
@@ -240,9 +289,9 @@ python harvest_categories.py \
 Full rerun (copy-paste):
 
 ```bash
-cd "/Users/yuanyu/Desktop/Russia Ukrain War/pipeline_v2"
+cd "/Users/yuanyu/Desktop/Russia_Ukrain_War/pipeline_v2"
 source .venv/bin/activate
-# or: source "/Users/yuanyu/Desktop/Russia Ukrain War/ru_ua/bin/activate"
+# or: source "/Users/yuanyu/Desktop/Russia_Ukrain_War/ru_ua/bin/activate"
 
 mkdir -p data/entities data/visualization
 
@@ -388,16 +437,81 @@ Additional hint-analysis outputs are generated automatically:
   - `data/visualization/unknown_hint_reason_counts.png`
   - report fields under `classified.unknown_hint_analysis`
 
-How to read the two normalization modes:
-- Column-normalized (`...heatmap.png` / `...table.csv`):
-  - question answered: "inside this hint type, how are attributions distributed?"
-  - each cell percent is `% within hint column`
-- Row-normalized (`..._row_normalized...`):
-  - question answered: "inside this attribution label, how are hints distributed?"
-  - each cell percent is `% within attribution row`
+### Hint heatmap file guide
+
+The hint-attribution heatmaps all use the same row/column layout:
+
+- rows = final attribution labels (`party1`, `party2`, `mixed`, `other`)
+- columns = harvest hints (`person`, `event`, `organization`, `policy`, `media_narrative`, `unknown`)
+
+The filenames tell you two things:
+
+- scope:
+  - no source suffix = all sources merged together
+  - `_wikidata` = Wikidata source only
+  - `_navboxes` = Wikipedia navboxes source only
+  - `_categories` = Wikipedia categories source only
+- normalization:
+  - plain filename = column-normalized
+  - `_row_normalized` in the filename = row-normalized
+
+In practice, the files mean:
+
+- All sources merged:
+  - `data/visualization/hint_attribution_heatmap.png`
+    - all sources merged
+    - column-normalized
+  - `data/visualization/hint_attribution_heatmap_row_normalized.png`
+    - all sources merged
+    - row-normalized
+- Wikidata only:
+  - `data/visualization/hint_attribution_heatmap_wikidata.png`
+    - Wikidata only
+    - column-normalized
+  - `data/visualization/hint_attribution_heatmap_wikidata_row_normalized.png`
+    - Wikidata only
+    - row-normalized
+- Navboxes only:
+  - `data/visualization/hint_attribution_heatmap_navboxes.png`
+    - navboxes only
+    - column-normalized
+  - `data/visualization/hint_attribution_heatmap_navboxes_row_normalized.png`
+    - navboxes only
+    - row-normalized
+- Categories only:
+  - `data/visualization/hint_attribution_heatmap_categories.png`
+    - categories only
+    - column-normalized
+  - `data/visualization/hint_attribution_heatmap_categories_row_normalized.png`
+    - categories only
+    - row-normalized
+
+### What normalization means here
+
+Normalization means: instead of only showing raw counts, the plot also shows percentages after rescaling counts relative to a chosen total.
+
+- Column-normalized:
+  - each hint column is treated as its own 100%
+  - question answered: "within this hint type, how are final attributions distributed?"
+  - example: in the `unknown` column, what share became `party1`, `party2`, `mixed`, or `other`?
+- Row-normalized:
+  - each attribution row is treated as its own 100%
+  - question answered: "within this attribution label, where did the entities come from by hint?"
+  - example: among all `mixed` entities, how many came from `person`, `event`, `organization`, or `unknown` hints?
+
+So the two versions are intentionally different:
+
+- column-normalized = better for checking hint purity / ambiguity
+- row-normalized = better for checking attribution composition
+
+Important naming rule:
+
+- `...heatmap.png` means column-normalized
+- `...heatmap_row_normalized.png` means row-normalized
+- the same rule also applies to the CSV tables
 
 Why each source has two figures:
-- they answer two different questions (hint purity vs label composition), so both are kept intentionally.
+- they answer two different questions, so both are kept intentionally.
 
 Hint extraction method:
 - visualization uses an `effective_hint` per entity from `source.hint` and `_sources[*].hint`
@@ -538,11 +652,11 @@ Example keyword block:
 
 ## Backward compatibility
 
-Legacy scripts remain available:
+Legacy RU-UA-only scripts remain available in `ru_ua_only/`:
 
-- `ru_ua_harvest_wikidata_entities.py`
-- `ru_ua_harvest_wikipedia_navboxes.py`
-- `ru_ua_classify_entities.py`
-- `ru_ua_harvest_visual.py`
+- `ru_ua_only/ru_ua_harvest_wikidata_entities.py`
+- `ru_ua_only/ru_ua_harvest_wikipedia_navboxes.py`
+- `ru_ua_only/ru_ua_classify_entities.py`
+- `ru_ua_only/ru_ua_harvest_visual.py`
 
-Use them only if you need exact old RU-UA outputs. The new config-driven scripts are the conflict-agnostic v2 workflow.
+Use them only if you need exact old RU-UA outputs. The new config-driven scripts in the top-level `pipeline_v2/` folder are the conflict-agnostic v2 workflow.
